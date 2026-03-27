@@ -8,6 +8,9 @@ help:
 	@echo "  make install     Install bufo to /usr/local/bin"
 	@echo "  make lint        Run shellcheck"
 	@echo ""
+	@echo "Releasing:"
+	@echo "  gh workflow run release.yml -f version=x.y.z"
+	@echo ""
 
 test:
 	@chmod +x tests/run.sh

@@ -668,6 +668,39 @@ main() {
       chmod +x "$tmp_file"
       mv "$tmp_file" "$install_dir/bufo"
       rm -f "$tmp_hash"
+
+      # Download and update lib directory alongside the main script
+      local tmp_lib tmp_lib_hash
+      tmp_lib=$(mktemp /tmp/bufo-update-lib.XXXXXX)
+      tmp_lib_hash=$(mktemp /tmp/bufo-update-lib-hash.XXXXXX)
+
+      if ! curl -fsSL "${base_url}/bufo-lib.tar.gz" -o "$tmp_lib" 2>/dev/null; then
+        error "Failed to download lib update"
+        rm -f "$tmp_lib" "$tmp_lib_hash"
+        exit 1
+      fi
+      if ! curl -fsSL "${base_url}/bufo-lib.tar.gz.sha256" -o "$tmp_lib_hash" 2>/dev/null; then
+        error "Failed to download lib checksum"
+        rm -f "$tmp_lib" "$tmp_lib_hash"
+        exit 1
+      fi
+
+      local expected_lib_hash actual_lib_hash
+      expected_lib_hash=$(awk '{print $1}' "$tmp_lib_hash")
+      actual_lib_hash=$($sha_cmd "$tmp_lib" | awk '{print $1}')
+
+      if [ "$actual_lib_hash" != "$expected_lib_hash" ]; then
+        error "Lib integrity check failed — update aborted"
+        error "  expected: $expected_lib_hash"
+        error "  got:      $actual_lib_hash"
+        rm -f "$tmp_lib" "$tmp_lib_hash"
+        exit 1
+      fi
+
+      mkdir -p "$install_dir/lib"
+      tar -xzf "$tmp_lib" -C "$install_dir" lib/
+      rm -f "$tmp_lib" "$tmp_lib_hash"
+
       echo -e "${GREEN}Updated: v$current_version → ${latest_version#v}${NC}"
       ;;
     "--version"|"-v")
