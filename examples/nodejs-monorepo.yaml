@@ -1,0 +1,47 @@
+# Example: Node.js Monorepo Configuration
+# Typical setup for a pnpm/npm monorepo with frontend and backend
+
+session_name: myapp
+tadpole_base: ~/Dev/my-project/tadpoles
+main_repo: ~/Dev/my-project
+
+tadpoles:
+  count: 5
+  prefix: tp
+  branch_pattern: tadpole-{N}
+
+ports:
+  api_base: 3200    # tp1=3201, tp2=3202, etc.
+  app_base: 3000    # tp1=3001, tp2=3002, etc.
+
+install_command: pnpm install
+
+layout:
+  panes:
+    - name: terminal
+      command: ""
+    - name: server
+      command: pnpm dev
+    - name: main
+      command: claude --dangerously-skip-permissions
+
+env_sync:
+  files:
+    - path: server/.env
+      port_var: API_PORT
+    - path: app/.env
+      port_var: VITE_API_PORT
+    - path: web/.env
+      port_var: VITE_API_BASE_URL
+
+cleanup:
+  preserve_files: ".env"
+  kill_pattern: "{PREFIX}-{N}.*node"
+
+# companions:
+#   # Canonical clones live at $tadpole_base/<name>, symlinked into each worktree.
+#   # Use this for large shared repos (e.g. internal monorepos) that every tadpole needs.
+#   repos:
+#     - name: my-shared-lib
+#       remote: git@github.com:org/my-shared-lib.git
+#       link_as: shared-lib   # optional, defaults to name

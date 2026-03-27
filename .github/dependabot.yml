@@ -1,0 +1,12 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /daemon
+    schedule:
+      interval: weekly
+    # Group all xterm packages into a single PR so the bundle is always
+    # rebuilt from a consistent set of versions.
+    groups:
+      xterm:
+        patterns:
+          - "@xterm/*"

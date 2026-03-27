@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Bufo</title>
+
+  <!-- xterm.js — bundled locally (run `npm run build` in daemon/) -->
+  <link rel="stylesheet" href="/xterm.css"/>
+  <script src="/xterm-bundle.js"></script>
+
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --green: #3fb950;
+      --yellow: #d29922;
+      --red: #f85149;
+      --tab-active: #1f6feb;
+      --font-mono: "SF Mono", "Fira Mono", "Cascadia Mono", Menlo, monospace;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    #header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    #header h1 { font-size: 17px; font-weight: 600; flex: 1; }
+    #back-btn {
+      background: none; border: none; color: var(--accent);
+      font-size: 15px; cursor: pointer; padding: 4px 0; display: none;
+    }
+    #status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--red); flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    #status-dot.connected { background: var(--green); }
+    #status-dot.connecting { background: var(--yellow); }
+
+    /* ── Main scrollable area (list view) ── */
+    #main {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      min-height: 0;
+    }
+    #main.hidden { display: none; }
+
+    /* ── Pane shell (terminal view) — flex sibling to #main ── */
+    #pane-shell {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      min-height: 0;
+    }
+    #pane-shell.active {
+      display: flex;
+    }
+
+    /* ── Views ── */
+    .view { display: none; height: 100%; }
+    .view.active { display: block; }
+
+    /* ── Workspace list ── */
+    #list-view { padding-bottom: 8px; }
+
+    .project-group { margin-top: 8px; }
+    .project-header {
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .project-header:active { background: var(--border); }
+    .project-header .ph-chevron {
+      color: var(--muted);
+      font-size: 11px;
+      margin-left: auto;
+      transition: transform 0.2s;
+    }
+    .project-header .ph-count {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+    }
+    .project-header .ph-active-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green);
+      flex-shrink: 0;
+    }
+    .project-group.collapsed .ph-chevron { transform: rotate(-90deg); }
+    .project-group.collapsed .project-items { display: none; }
+
+    .workspace-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      gap: 12px;
+    }
+    .workspace-item:active { background: var(--surface); }
+
+    .ws-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0;
+    }
+    .ws-icon.active { border-color: var(--green); }
+
+    .ws-info { flex: 1; min-width: 0; }
+    .ws-title { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ws-sub { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .ws-badges { display: flex; gap: 4px; flex-shrink: 0; }
+    .badge {
+      font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 10px;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .badge-lock { background: #6e401a; color: #f0883e; }
+    .badge-pr   { background: #1a3a6e; color: #79c0ff; }
+    .badge-ticket { background: #1e3a1e; color: var(--green); }
+
+    .chevron { color: var(--muted); flex-shrink: 0; font-size: 12px; }
+
+    /* Loading / empty states */
+    .state-msg {
+      text-align: center; color: var(--muted);
+      padding: 48px 24px; font-size: 14px; line-height: 1.6;
+    }
+    .state-msg .icon { font-size: 32px; margin-bottom: 12px; }
+
+    /* ── Pane view ── */
+    #pane-view {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* Pane tabs */
+    #pane-tabs {
+      display: flex;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      flex-shrink: 0;
+      scrollbar-width: none;
+    }
+    #pane-tabs::-webkit-scrollbar { display: none; }
+
+    .pane-tab {
+      padding: 10px 18px;
+      font-size: 13px; font-weight: 500;
+      color: var(--muted);
+      cursor: pointer; white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .pane-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .pane-tab.unavailable { color: var(--border); cursor: default; }
+
+    /* ── Terminal container ── */
+    #terminal-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      min-height: 0;
+    }
+
+    /* Fallback banner (plaintext mode) */
+    #fallback-banner {
+      display: none;
+      background: #2d2000;
+      color: #d29922;
+      font-size: 11px;
+      padding: 5px 12px;
+      border-bottom: 1px solid #5a4000;
+      flex-shrink: 0;
+      line-height: 1.4;
+    }
+
+    #terminal-container {
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* xterm.js DOM: .xterm > .xterm-scrollable-element > .xterm-viewport (position:absolute, top/bottom/left/right:0)
+       Both .xterm and .xterm-scrollable-element need explicit heights so that
+       .xterm-viewport's bottom:0 anchors correctly and the scrollbar stays
+       within the container rather than overflowing behind the bars below. */
+    #terminal-container .xterm {
+      height: 100%;
+    }
+    #terminal-container .xterm-scrollable-element {
+      height: 100%;
+      overflow-y: scroll;
+    }
+    /* Hide the inner viewport scrollbar — .xterm-scrollable-element is the
+       actual scroll container now, so .xterm-viewport's scrollbar is redundant. */
+    #terminal-container .xterm-viewport {
+      overflow-y: hidden !important;
+    }
+    /* Hide xterm's custom Monaco-style scrollbar overlay elements — the native
+       scrollbar on .xterm-scrollable-element replaces them. */
+    #terminal-container .xterm-scrollable-element > .scrollbar,
+    #terminal-container .xterm-scrollable-element > .shadow {
+      display: none !important;
+    }
+
+    /* ── Signal / navigation bar ── */
+    #signal-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    #signal-bar::-webkit-scrollbar { display: none; }
+
+    .sig-btn {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 5px 10px;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.1s, border-color 0.1s;
+    }
+    .sig-btn:active { background: var(--border); }
+    .sig-btn.danger  { border-color: #f85149; color: #f85149; }
+    .sig-btn.warning { border-color: #d29922; color: #d29922; }
+
+    /* Input bar */
+    #input-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      padding-bottom: calc(8px + var(--safe-bottom));
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #cmd-input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      padding: 8px 12px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    #cmd-input:focus { border-color: var(--accent); }
+    #send-btn {
+      background: var(--accent);
+      color: #0d1117;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 14px; font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #send-btn:active { opacity: 0.8; }
+    #send-btn:disabled { background: var(--border); color: var(--muted); cursor: default; }
+
+    /* Refresh button */
+    #refresh-btn {
+      background: none; border: none; color: var(--muted);
+      font-size: 18px; cursor: pointer; padding: 4px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #refresh-btn:active { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="header">
+  <button id="back-btn">← Back</button>
+  <h1 id="header-title">🐸 Bufo</h1>
+  <button id="refresh-btn" title="Refresh workspaces">↻</button>
+  <div id="status-dot" title="WebSocket status"></div>
+</div>
+
+<!-- Main scrollable area (list view only) -->
+<div id="main">
+
+  <!-- Workspace list view -->
+  <div id="list-view" class="view active">
+    <div id="list-content">
+      <div class="state-msg">
+        <div class="icon">⏳</div>
+        Connecting…
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Pane shell (terminal + signal bar + input bar) — flex sibling to #main -->
+<div id="pane-shell">
+
+  <!-- Pane view (terminal) -->
+  <div id="pane-view">
+    <div id="pane-tabs"></div>
+    <div id="terminal-wrapper">
+      <div id="fallback-banner">
+        ⚠ Raw log unavailable — showing plain text. Enable iTerm2 session logging for colors.
+      </div>
+      <div id="terminal-container"></div>
+    </div>
+  </div>
+
+  <!-- Signal / navigation bar -->
+  <div id="signal-bar">
+    <button class="sig-btn danger"  id="btn-sigint">Ctrl+C</button>
+    <button class="sig-btn" id="btn-sigtstp">Ctrl+R</button>
+    <button class="sig-btn" id="btn-arrow-up">↑</button>
+    <button class="sig-btn" id="btn-arrow-down">↓</button>
+    <button class="sig-btn" id="btn-arrow-left">←</button>
+    <button class="sig-btn" id="btn-arrow-right">→</button>
+    <button class="sig-btn" id="btn-tab">Tab</button>
+    <button class="sig-btn" id="btn-esc">Esc</button>
+  </div>
+
+  <!-- Input bar -->
+  <div id="input-bar">
+    <input id="cmd-input" type="text" placeholder="Type a command…" autocomplete="off"
+           autocorrect="off" autocapitalize="none" spellcheck="false" />
+    <button id="send-btn">↵</button>
+  </div>
+
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// xterm.js terminal setup
+// ---------------------------------------------------------------------------
+const term = new Terminal({
+  theme: {
+    background:   '#0d1117',
+    foreground:   '#e6edf3',
+    cursor:       '#58a6ff',
+    cursorAccent: '#0d1117',
+    black:        '#484f58',
+    red:          '#ff7b72',
+    green:        '#3fb950',
+    yellow:       '#d29922',
+    blue:         '#58a6ff',
+    magenta:      '#bc8cff',
+    cyan:         '#39c5cf',
+    white:        '#b1bac4',
+    brightBlack:  '#6e7681',
+    brightRed:    '#ffa198',
+    brightGreen:  '#56d364',
+    brightYellow: '#e3b341',
+    brightBlue:   '#79c0ff',
+    brightMagenta:'#d2a8ff',
+    brightCyan:   '#56d4dd',
+    brightWhite:  '#f0f6fc',
+  },
+  fontFamily: '"SF Mono", "Cascadia Mono", Menlo, monospace',
+  fontSize: 12,
+  lineHeight: 1.4,
+  convertEol: true,
+  scrollback: 5000,
+  allowProposedApi: true,
+});
+
+const fitAddon = new FitAddon.FitAddon();
+term.loadAddon(fitAddon);
+
+// Canvas addon for better mobile performance
+try {
+  term.loadAddon(new CanvasAddon.CanvasAddon());
+} catch (e) {
+  // Canvas renderer unavailable (e.g. no WebGL) — fall back to DOM renderer
+  console.warn('[xterm] canvas addon unavailable, using DOM renderer:', e);
+}
+
+term.open(document.getElementById('terminal-container'));
+fitAddon.fit();
+
+// Refit on orientation change / window resize — but only when the terminal
+// isn't locked to the real iTerm2 dimensions.
+window.addEventListener('resize', () => {
+  if (!termDimsFromServer) {
+    try { fitAddon.fit(); } catch { /* ignore */ }
+  }
+});
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+let ws = null;
+let workspaces = [];
+let activeWorkspace = null;     // BufoWorkspace object
+let activeSessionId = null;     // currently subscribed session ID
+let currentMode = 'plaintext';  // 'ansi' | 'plaintext'
+let termDimsFromServer = false; // true when term.resize() was called with real iTerm2 dims
+
+// Scroll the real DOM scroll container (.xterm-scrollable-element) to the
+// bottom.  term.scrollToBottom() only moves .xterm-viewport, which we've
+// hidden in favour of .xterm-scrollable-element as the scroll container.
+function scrollToBottom() {
+  const el = document.querySelector('#terminal-container .xterm-scrollable-element');
+  if (el) el.scrollTop = el.scrollHeight;
+}
+
+// ---------------------------------------------------------------------------
+// DOM refs
+// ---------------------------------------------------------------------------
+const headerTitle    = document.getElementById('header-title');
+const backBtn        = document.getElementById('back-btn');
+const refreshBtn     = document.getElementById('refresh-btn');
+const statusDot      = document.getElementById('status-dot');
+const mainEl         = document.getElementById('main');
+const listView       = document.getElementById('list-view');
+const listContent    = document.getElementById('list-content');
+const paneShell      = document.getElementById('pane-shell');
+const paneView       = document.getElementById('pane-view');
+const paneTabs       = document.getElementById('pane-tabs');
+const terminalWrapper= document.getElementById('terminal-wrapper');
+const fallbackBanner = document.getElementById('fallback-banner');
+const inputBar       = document.getElementById('input-bar');
+const signalBar      = document.getElementById('signal-bar');
+const cmdInput       = document.getElementById('cmd-input');
+const sendBtn        = document.getElementById('send-btn');
+
+// ---------------------------------------------------------------------------
+// WebSocket
+// ---------------------------------------------------------------------------
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const url   = `${proto}://${location.host}/ws`;
+  setStatus('connecting');
+
+  ws = new WebSocket(url);
+
+  ws.addEventListener('open', () => {
+    setStatus('connected');
+    send({ type: 'list_tadpoles' });
+  });
+
+  ws.addEventListener('message', (evt) => {
+    let msg;
+    try { msg = JSON.parse(evt.data); } catch { return; }
+    handleMessage(msg);
+  });
+
+  ws.addEventListener('close', () => {
+    setStatus('disconnected');
+    ws = null;
+    setTimeout(connect, 2000);
+  });
+
+  ws.addEventListener('error', () => {
+    ws && ws.close();
+  });
+}
+
+function send(obj) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(obj));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Message handler
+// ---------------------------------------------------------------------------
+function handleMessage(msg) {
+  switch (msg.type) {
+    case 'tadpoles':
+      workspaces = msg.data || [];
+      renderList();
+      break;
+
+    case 'subscribed':
+      // Server confirmed subscription and told us which renderer to use
+      if (msg.sessionId === activeSessionId) {
+        currentMode = msg.mode || 'plaintext';
+        term.reset();
+        if (msg.rows && msg.cols) {
+          try { term.resize(msg.cols, msg.rows); } catch { /* ignore */ }
+          termDimsFromServer = true;
+        } else {
+          try { fitAddon.fit(); } catch { /* ignore */ }
+          termDimsFromServer = false;
+        }
+        // Show/hide fallback banner
+        fallbackBanner.style.display = (currentMode === 'plaintext') ? 'block' : 'none';
+        if (currentMode === 'plaintext') {
+          term.writeln('\x1b[33m⚠ Raw log unavailable — showing plain text. Enable iTerm2 session logging for colors.\x1b[0m');
+        }
+      }
+      break;
+
+    case 'mode_upgrade':
+      // Server detected that an ANSI log file appeared for a session that
+      // started in plaintext mode — upgrade the renderer silently.
+      if (msg.sessionId === activeSessionId && currentMode === 'plaintext') {
+        currentMode = 'ansi';
+        fallbackBanner.style.display = 'none';
+        term.reset();
+      }
+      break;
+
+    case 'output':
+      if (msg.sessionId === activeSessionId) {
+        if (msg.chunk !== undefined) {
+          term.write(base64ToUint8Array(msg.chunk), scrollToBottom);
+        } else if (msg.content !== undefined) {
+          term.write(msg.content, scrollToBottom);
+        }
+      }
+      break;
+
+    case 'error':
+      console.error('[server]', msg.message);
+      break;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Base64 → Uint8Array helper
+// ---------------------------------------------------------------------------
+function base64ToUint8Array(b64) {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// ---------------------------------------------------------------------------
+// Status indicator
+// ---------------------------------------------------------------------------
+function setStatus(state) {
+  statusDot.className = '';
+  if (state === 'connected')    statusDot.classList.add('connected');
+  if (state === 'connecting')   statusDot.classList.add('connecting');
+  statusDot.title = state;
+}
+
+// ---------------------------------------------------------------------------
+// URL state — persist selected workspace + pane across refreshes
+// ---------------------------------------------------------------------------
+
+/** Stable key for a workspace: "<project-alias>-<number>" e.g. "pf-5" */
+function wsKey(w) {
+  return `${w.project.alias}-${w.number}`;
+}
+
+/** Write current selection into the URL without adding a history entry. */
+function pushSelectionToURL(w, paneName) {
+  const params = new URLSearchParams();
+  params.set('ws', wsKey(w));
+  params.set('pane', paneName);
+  history.replaceState(null, '', '?' + params.toString());
+}
+
+/** Clear selection params from URL (back to list view). */
+function clearURL() {
+  history.replaceState(null, '', location.pathname);
+}
+
+/**
+ * After workspaces load, check the URL for ?ws=&pane= and restore the
+ * selection. Called from renderList() once workspaces are available.
+ */
+function restoreFromURL() {
+  const params = new URLSearchParams(location.search);
+  const wsParam   = params.get('ws');
+  const paneParam = params.get('pane');
+  if (!wsParam) return;
+
+  const match = workspaces.find(w => wsKey(w) === wsParam);
+  if (!match) return;
+
+  // Open the workspace; openWorkspace will auto-select first available pane.
+  // We then override to the requested pane if it's available.
+  openWorkspace(match, paneParam || null);
+}
+
+
+function getWorkspaceTitle(ws) {
+  if (ws.meta?.pr_title) {
+    const name = ws.customName || `ws${ws.number}`;
+    return `${name}: ${ws.meta.pr_title}`;
+  }
+  if (ws.meta?.ticket) {
+    const name = ws.customName || `ws${ws.number}`;
+    return `${name} (${ws.meta.ticket})`;
+  }
+  if (ws.customName) return ws.customName;
+  return `${ws.project.tadpoles.prefix}-${ws.number}`;
+}
+
+function getWorkspaceSubtitle(ws) {
+  const parts = [];
+  if (ws.branch && ws.branch !== 'unknown') parts.push(ws.branch);
+  if (ws.meta?.type && ws.meta.type !== 'workspace') parts.push(ws.meta.type.toUpperCase());
+  return parts.join(' | ');
+}
+
+function renderList() {
+  if (!workspaces.length) {
+    listContent.innerHTML = `
+      <div class="state-msg">
+        <div class="icon">📭</div>
+        No workspaces found.<br>
+        <small>Check ~/.bufo/projects/</small>
+      </div>`;
+    return;
+  }
+
+  // Group by project alias
+  const groups = new Map();
+  for (const w of workspaces) {
+    const key = w.project.alias;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(w);
+  }
+
+  // Determine which alias the URL params refer to (for auto-expand)
+  const urlWsParam = new URLSearchParams(location.search).get('ws');
+  const urlAlias   = urlWsParam ? urlWsParam.replace(/-\d+$/, '') : null;
+
+  let html = '';
+  for (const [alias, items] of groups) {
+    const hasActive   = items.some(w => w.active);
+    // Expand if: has an active workspace, matches URL param, or only one group
+    const defaultOpen = hasActive || alias === urlAlias || groups.size === 1;
+    const stored      = localStorage.getItem(`ct-group-${alias}`);
+    // stored value overrides default only when it was explicitly set by the user
+    const isOpen      = stored !== null ? stored === '1' : defaultOpen;
+    const collapsedClass = isOpen ? '' : ' collapsed';
+
+    const activeDot  = hasActive ? '<span class="ph-active-dot"></span>' : '';
+    const countLabel = `<span class="ph-count">${items.length}</span>`;
+
+    html += `<div class="project-group${collapsedClass}" data-alias="${escHtml(alias)}">`;
+    html += `<div class="project-header">
+               ${activeDot}
+               <span>${escHtml(alias)}</span>
+               ${countLabel}
+               <span class="ph-chevron">▾</span>
+             </div>`;
+    html += `<div class="project-items">`;
+
+    for (const w of items) {
+      const title    = escHtml(getWorkspaceTitle(w));
+      const subtitle = escHtml(getWorkspaceSubtitle(w));
+      const icon     = w.active ? '🟢' : '⚪';
+      const activeClass = w.active ? ' active' : '';
+
+      let badges = '';
+      if (w.locked)          badges += `<span class="badge badge-lock">🔒</span>`;
+      if (w.meta?.pr_number) badges += `<span class="badge badge-pr">PR</span>`;
+      if (w.meta?.ticket)    badges += `<span class="badge badge-ticket">T</span>`;
+
+      const wsIndex = workspaces.indexOf(w);
+      html += `
+        <div class="workspace-item" data-idx="${wsIndex}">
+          <div class="ws-icon${activeClass}">${icon}</div>
+          <div class="ws-info">
+            <div class="ws-title">${title}</div>
+            ${subtitle ? `<div class="ws-sub">${subtitle}</div>` : ''}
+          </div>
+          <div class="ws-badges">${badges}</div>
+          <span class="chevron">›</span>
+        </div>`;
+    }
+    html += `</div></div>`; // .project-items  .project-group
+  }
+
+  listContent.innerHTML = html;
+
+  // Toggle collapse on project header tap
+  listContent.querySelectorAll('.project-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const group = header.closest('.project-group');
+      const alias = group.dataset.alias;
+      const nowCollapsed = !group.classList.toggle('collapsed');
+      localStorage.setItem(`ct-group-${alias}`, nowCollapsed ? '1' : '0');
+    });
+  });
+
+  // Attach tap listeners to workspace items
+  listContent.querySelectorAll('.workspace-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.idx, 10);
+      openWorkspace(workspaces[idx]);
+    });
+  });
+
+  // Restore selection from URL (only on first load — skip if already in pane view)
+  if (!activeWorkspace) restoreFromURL();
+}
+
+// ---------------------------------------------------------------------------
+// Pane view
+// ---------------------------------------------------------------------------
+function openWorkspace(w, preferredPane) {
+  activeWorkspace = w;
+
+  // Unsubscribe from any previous session
+  if (activeSessionId) {
+    send({ type: 'unsubscribe', sessionId: activeSessionId });
+    activeSessionId = null;
+  }
+
+  // Build pane tabs
+  const panes = w.state?.panes;
+  const paneNames = ['terminal', 'server', 'main', 'info'];
+  paneTabs.innerHTML = '';
+
+  for (const name of paneNames) {
+    const sid = panes?.[name];
+    const tab = document.createElement('div');
+    tab.className = 'pane-tab' + (sid ? '' : ' unavailable');
+    tab.textContent = name;
+    tab.dataset.sessionId = sid || '';
+    tab.dataset.name = name;
+    paneTabs.appendChild(tab);
+
+    if (sid) {
+      tab.addEventListener('click', () => selectPane(tab, sid));
+    }
+  }
+
+  // Switch to pane view
+  showPane();
+  headerTitle.textContent = getWorkspaceTitle(w);
+  backBtn.style.display = 'inline';
+  refreshBtn.style.display = 'none';
+
+  // Select preferred pane if available, otherwise first available
+  const preferredTab = preferredPane &&
+    paneTabs.querySelector(`.pane-tab[data-name="${preferredPane}"]:not(.unavailable)`);
+  const targetTab = preferredTab || paneTabs.querySelector('.pane-tab:not(.unavailable)');
+
+  if (targetTab) {
+    selectPane(targetTab, targetTab.dataset.sessionId);
+  } else {
+    term.reset();
+    term.writeln('No pane sessions found for this workspace.');
+    term.writeln('The workspace may not be running.');
+  }
+}
+
+function selectPane(tabEl, sessionId) {
+  // Update tab active state
+  paneTabs.querySelectorAll('.pane-tab').forEach(t => t.classList.remove('active'));
+  tabEl.classList.add('active');
+
+  // Unsubscribe old
+  if (activeSessionId && activeSessionId !== sessionId) {
+    send({ type: 'unsubscribe', sessionId: activeSessionId });
+  }
+
+  activeSessionId = sessionId;
+  termDimsFromServer = false;  // reset — will be set when 'subscribed' arrives with real dims
+  term.reset();
+  term.write('\x1b[2m⏳ Connecting…\x1b[0m');
+  fallbackBanner.style.display = 'none';
+
+  // Persist selection to URL
+  if (activeWorkspace) {
+    pushSelectionToURL(activeWorkspace, tabEl.dataset.name);
+  }
+
+  send({ type: 'subscribe', sessionId });
+}
+
+function showList() {
+  mainEl.classList.remove('hidden');
+  paneShell.classList.remove('active');
+
+  backBtn.style.display = 'none';
+  refreshBtn.style.display = '';
+  headerTitle.textContent = '🐸 Bufo';
+
+  // Clear URL selection params
+  clearURL();
+
+  // Unsubscribe from current session
+  if (activeSessionId) {
+    send({ type: 'unsubscribe', sessionId: activeSessionId });
+    activeSessionId = null;
+  }
+  activeWorkspace = null;
+}
+
+function showPane() {
+  mainEl.classList.add('hidden');
+  paneShell.classList.add('active');
+
+  // Give the DOM a moment to lay out, then fit — but only when we don't
+  // already have exact dimensions from the server.  If the server told us
+  // the real iTerm2 cols/rows we must keep term.resize() in effect so that
+  // PTY cursor sequences (which are baked for that column width) are correct.
+  requestAnimationFrame(() => {
+    if (!termDimsFromServer) {
+      try { fitAddon.fit(); } catch { /* ignore */ }
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Signal / navigation buttons
+// ---------------------------------------------------------------------------
+document.getElementById('btn-sigint').addEventListener('click', () => {
+  if (activeSessionId) send({ type: 'signal', sessionId: activeSessionId, signal: 'SIGINT' });
+});
+document.getElementById('btn-sigtstp').addEventListener('click', () => {
+  if (activeSessionId) send({ type: 'input', sessionId: activeSessionId, text: '\x12' });
+});
+document.getElementById('btn-arrow-up').addEventListener('click', () => {
+  if (activeSessionId) send({ type: 'input', sessionId: activeSessionId, text: '\x1b[A' });
+});
+document.getElementById('btn-arrow-down').addEventListener('click', () => {
+  if (activeSessionId) send({ type: 'input', sessionId: activeSessionId, text: '\x1b[B' });
+});
+document.getElementById('btn-arrow-left').addEventListener('click', () => {
+  if (activeSessionId) send({ type: 'input', sessionId: activeSessionId, text: '\x1b[D' });
+});
+document.getElementById('btn-arrow-right').addEventListener('click', () => {
+  if (activeSessionId) send({ type: 'input', sessionId: activeSessionId, text: '\x1b[C' });
+});
+document.getElementById('btn-tab').addEventListener('click', () => {
+  if (activeSessionId) send({ type: 'input', sessionId: activeSessionId, text: '\t' });
+});
+document.getElementById('btn-esc').addEventListener('click', () => {
+  if (activeSessionId) send({ type: 'input', sessionId: activeSessionId, text: '\x1b' });
+});
+
+// ---------------------------------------------------------------------------
+// Input
+// ---------------------------------------------------------------------------
+sendBtn.addEventListener('click', sendInput);
+cmdInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); sendInput(); }
+});
+
+function sendInput() {
+  const text = cmdInput.value;
+  if (!text || !activeSessionId) return;
+  // Always append \n so the command runs
+  send({ type: 'input', sessionId: activeSessionId, text: text + '\n' });
+  cmdInput.value = '';
+}
+
+// ---------------------------------------------------------------------------
+// Back button
+// ---------------------------------------------------------------------------
+backBtn.addEventListener('click', showList);
+
+// ---------------------------------------------------------------------------
+// Refresh button
+// ---------------------------------------------------------------------------
+refreshBtn.addEventListener('click', () => {
+  send({ type: 'list_tadpoles' });
+  listContent.innerHTML = `<div class="state-msg"><div class="icon">⏳</div>Refreshing…</div>`;
+});
+
+// ---------------------------------------------------------------------------
+// Utils
+// ---------------------------------------------------------------------------
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
+connect();
+</script>
+</body>
+</html>
