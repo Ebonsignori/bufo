@@ -68,12 +68,15 @@ jobs:
           sha256sum bufo > bufo.sha256
           sha256sum bufo-lib.tar.gz > bufo-lib.tar.gz.sha256
           sha256sum bufo-daemon.tar.gz > bufo-daemon.tar.gz.sha256
+          sha256sum install.sh > install.sh.sha256
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ inputs.version }}
           files: |
+            install.sh
+            install.sh.sha256
             bufo
             bufo.sha256
             bufo-lib.tar.gz

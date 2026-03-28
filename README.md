@@ -15,7 +15,7 @@ Each tadpole is a **git worktree** with its own branch. Opening a tadpole create
 ### One-line install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Ebonsignori/bufo/main/install.sh | bash
+curl -fsSL https://github.com/Ebonsignori/bufo/releases/latest/download/install.sh | bash
 ```
 
 This installs `bufo`, installs required dependencies (`git`, `yq`, `jq` via Homebrew), adds `~/.local/bin` to your PATH, and walks you through configuring iTerm2 (keyboard shortcuts, clipboard paste, session logging, and the web daemon).
@@ -23,7 +23,7 @@ This installs `bufo`, installs required dependencies (`git`, `yq`, `jq` via Home
 To skip the iTerm2 setup step:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Ebonsignori/bufo/main/install.sh | bash -s -- --no-setup
+curl -fsSL https://github.com/Ebonsignori/bufo/releases/latest/download/install.sh | bash -s -- --no-setup
 ```
 
 Once installed, run `bufo install` at any time to re-run the full setup.
@@ -194,7 +194,7 @@ layout:
     - name: server
       command: "npm run dev"
     - name: main
-      command: "claude --dangerously-skip-permissions --chrome"
+      command: "claude --dangerously-skip-permissions"
 
 env_sync:
   port_spacing: 10

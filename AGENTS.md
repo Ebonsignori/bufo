@@ -174,10 +174,13 @@ gh workflow run release.yml -f version=x.y.z
 1. **Bumps the version** — rewrites `VERSION=` in `src/lib/common.sh` via `sed`
 2. **Commits and tags** — pushes a `chore: bump version to x.y.z` commit to `main` and an annotated tag `vX.Y.Z`
 3. **Builds release assets:**
+   - `install.sh` — the installer script (so the one-liner always pulls a tagged release)
+   - `install.sh.sha256` — SHA256 checksum
    - `bufo` — the CLI entry point (`src/bufo`)
    - `bufo-lib.tar.gz` — the full `src/lib/` directory
-   - `bufo.sha256` / `bufo-lib.tar.gz.sha256` — SHA256 checksums
-4. **Creates a GitHub Release** with auto-generated release notes (from commit messages) and all four assets attached
+   - `bufo-daemon.tar.gz` — compiled daemon (`dist/` + `package.json`)
+   - `bufo.sha256` / `bufo-lib.tar.gz.sha256` / `bufo-daemon.tar.gz.sha256` — SHA256 checksums
+4. **Creates a GitHub Release** with auto-generated release notes (from commit messages) and all assets attached
 
 ### Version source of truth
 
