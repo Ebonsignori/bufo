@@ -1,4 +1,4 @@
-# bufo 🐸
+# bufo <img src="assets/bufo.png" alt="bufo" height="32" style="vertical-align: middle;" />
 
 An iTerm2-native workspace (tadpoles) manager for multi-repo development on macOS. 
 
@@ -26,7 +26,20 @@ To skip the iTerm2 setup step:
 curl -fsSL https://github.com/Ebonsignori/bufo/releases/latest/download/install.sh | bash -s -- --no-setup
 ```
 
-Once installed, run `bufo install` at any time to re-run the full setup.
+<details>
+<summary>What's skipped with <code>--no-setup</code></summary>
+
+| Feature | Without setup | Impact |
+|---|---|---|
+| **Pane navigation keybindings** (`Ctrl+H/J/K/L`) | Not configured in iTerm2 | Can't keyboard-navigate between panes; bufo's AppleScript control still works fine |
+| **Clipboard image paste** (`Cmd+Shift+V`) | Not installed | `Cmd+Shift+V` won't convert clipboard images to file paths for AI agents |
+| **iTerm2 session logging** | Not enabled on profiles | `bufo web` mobile UI falls back to plaintext polling instead of full ANSI color rendering |
+| **Web daemon LaunchAgent** | Not installed | `bufo web start` / `bufo web restart` will error; daemon won't auto-start at login |
+| `setup_completed` config flag | Not written | Every bufo command prints a reminder tip until setup is run |
+
+Run `bufo install` at any time to complete the setup retroactively.
+
+</details>
 
 If you have the repo cloned locally, you can also run the installer directly — it will use the local files instead of downloading from GitHub:
 
