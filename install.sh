@@ -201,8 +201,17 @@ if [ -f "$SCRIPT_DIR/src/bufo" ]; then
 else
   # Download from GitHub.
   # If called from an existing installation (bufo install), BUFO_VERSION is set to the
-  # running version so we re-download that exact release rather than the tip of main.
+  # running version so we re-download that exact release rather than fetching latest.
   local_ref="${BUFO_VERSION:-}"
+  if [ -z "$local_ref" ]; then
+    # Resolve the latest release tag so we always install a stable, tagged version.
+    local_ref=$(curl -fsSL \
+      "https://api.github.com/repos/Ebonsignori/bufo/releases/latest" \
+      2>/dev/null | grep '"tag_name"' | head -1 | cut -d'"' -f4 | sed 's/^v//')
+    if [ -z "$local_ref" ]; then
+      echo -e "${YELLOW}Warning: could not determine latest release, falling back to main.${NC}"
+    fi
+  fi
   if [ -n "$local_ref" ]; then
     archive_url="$REPO/archive/refs/tags/v${local_ref}.tar.gz"
     extract_dir="bufo-${local_ref}"
