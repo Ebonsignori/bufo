@@ -94,9 +94,6 @@ export function loadTadpoleState(sessionName: string, num: number): TadpoleState
   }
 }
 
-// Legacy alias
-export const loadWorkspaceState = loadTadpoleState;
-
 export function loadTadpoleMeta(tadpoleDir: string): TadpoleMeta | undefined {
   const metaFile = join(tadpoleDir, ".bufo-meta");
   if (!existsSync(metaFile)) return undefined;
@@ -107,15 +104,9 @@ export function loadTadpoleMeta(tadpoleDir: string): TadpoleMeta | undefined {
   }
 }
 
-// Legacy alias
-export const loadWorkspaceMeta = loadTadpoleMeta;
-
 export function isTadpoleLocked(tadpoleDir: string): boolean {
   return existsSync(join(tadpoleDir, ".bufo-lock"));
 }
-
-// Legacy alias
-export const isWorkspaceLocked = isTadpoleLocked;
 
 export function getCustomName(tadpoleDir: string): string | undefined {
   const nameFile = join(tadpoleDir, ".bufo-name");

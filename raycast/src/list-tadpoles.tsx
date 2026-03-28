@@ -11,7 +11,7 @@ import {
   Alert,
 } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
-import { getAllWorkspaces, getTadpoleTitle, getTadpoleSubtitle } from "./lib/bufo";
+import { getAllTadpoles, getTadpoleTitle, getTadpoleSubtitle } from "./lib/bufo";
 import { bufoExists } from "./lib/config";
 import { focusSession } from "./lib/iterm";
 import { runBufoAsync } from "./lib/exec";
@@ -32,20 +32,28 @@ export default function ListTadpoles() {
     );
   }
 
-  const { data, isLoading, revalidate } = useCachedPromise(async () => getAllWorkspaces(), [], {
+  const { data, isLoading, revalidate } = useCachedPromise(async () => getAllTadpoles(), [], {
     keepPreviousData: true,
   });
 
-  const tadpoles = data?.workspaces ?? [];
+  const tadpoles = data?.tadpoles ?? [];
   const projects = data?.projects ?? [];
 
-  // Group by project
+  // Group by project, active tadpoles first within each group
   const grouped = new Map<string, BufoTadpole[]>();
   for (const tp of tadpoles) {
     const key = tp.project.alias;
     if (!grouped.has(key)) grouped.set(key, []);
     grouped.get(key)!.push(tp);
   }
+  for (const [key, tpList] of grouped) {
+    grouped.set(key, [...tpList].sort((a, b) => Number(b.active) - Number(a.active)));
+  }
+
+  // Projects with any active tadpoles first
+  const sortedEntries = [...grouped.entries()].sort(
+    ([, a], [, b]) => Number(b.some((tp) => tp.active)) - Number(a.some((tp) => tp.active))
+  );
 
   return (
     <List isLoading={isLoading} searchBarPlaceholder="Filter tadpoles...">
@@ -63,7 +71,7 @@ export default function ListTadpoles() {
           icon={Icon.Desktop}
         />
       )}
-      {Array.from(grouped.entries()).map(([alias, tpList]) => (
+      {sortedEntries.map(([alias, tpList]) => (
         <List.Section key={alias} title={`@${alias}`} subtitle={`${tpList.length} tadpole(s)`}>
           {tpList.map((tp) => (
             <TadpoleItem key={`${alias}-${tp.number}`} tp={tp} revalidate={revalidate} />

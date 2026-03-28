@@ -2,7 +2,7 @@
 
 ## What is This?
 
-A [Raycast](https://raycast.com) extension that surfaces bufo workspaces and common actions in the Raycast launcher. It reads `~/.bufo` state directly (no daemon dependency) and shells out to the `bufo` CLI for mutations.
+A [Raycast](https://raycast.com) extension that surfaces bufo tadpoles in the Raycast launcher. It reads `~/.bufo` state directly (no daemon dependency) and shells out to the `bufo` CLI for mutations.
 
 ## Architecture
 
@@ -11,27 +11,23 @@ A [Raycast](https://raycast.com) extension that surfaces bufo workspaces and com
 ```
 raycast/
   src/
-    list-workspaces.tsx   # Command: browse all workspaces across projects
-    new-workspace.tsx     # Command: create a workspace or ticket workspace
-    switch-project.tsx    # Command: browse projects, set default, open main repo
-    quick-actions.tsx     # Command: one-shot bufo commands (doctor, ports, kill, unlock-all)
-    lib/                  # Shared library (symlinked into daemon/src/lib/)
-      types.ts            # BufoProject, BufoWorkspace, WorkspaceState, WorkspaceMeta, GlobalConfig
-      config.ts           # Config + state readers (no shell — pure fs/yaml)
-      bufo.ts         # Workspace discovery + display helpers
-      exec.ts             # bufo CLI runner + git branch helper
-      iterm.ts            # iTerm2 AppleScript helpers (focusSession, getActiveSessions)
-  package.json            # Raycast extension manifest + dependencies
+    list-tadpoles.tsx    # Command: browse all tadpoles across projects
+    new-tadpole.tsx      # Command: create a tadpole from a ticket, PR, or slot number
+    lib/                 # Shared library (symlinked into daemon/src/lib/)
+      types.ts           # BufoProject, BufoTadpole, TadpoleState, TadpoleMeta, GlobalConfig
+      config.ts          # Config + state readers (no shell — pure fs/yaml)
+      bufo.ts            # Tadpole discovery + display helpers
+      exec.ts            # bufo CLI runner + git branch helper
+      iterm.ts           # iTerm2 AppleScript helpers (focusSession, getActiveSessions)
+  package.json           # Raycast extension manifest + dependencies
 ```
 
 ### Commands
 
 | Command file | Raycast title | What it does |
 |---|---|---|
-| `list-workspaces.tsx` | List Workspaces | Shows all workspaces grouped by project; focus, open, lock/unlock, copy branch, cleanup, destroy |
-| `new-workspace.tsx` | New Workspace | Form to create a numbered workspace or a ticket workspace (`bufo @alias ws N` / `bufo @alias ticket ID`) |
-| `switch-project.tsx` | Switch Project | Lists projects with active/total workspace counts; set default, open main repo |
-| `quick-actions.tsx` | Quick Actions | Static list of one-shot commands: unlock-all, doctor, ports, kill |
+| `list-tadpoles.tsx` | List Tadpoles | Shows all tadpoles grouped by project; focus, open, lock/unlock, copy branch, cleanup, destroy |
+| `new-tadpole.tsx` | New Tadpole | Form to create a tadpole from a ticket/PR URL or slot number (`bufo @alias ticket` / `bufo @alias pr` / `bufo @alias tp N`) |
 
 ### Data Flow
 
@@ -39,19 +35,19 @@ raycast/
 Command renders
   │
   ├─ Read-only data (no shell)
-  │    config.ts: discoverProjects()       reads ~/.bufo/projects/*.yaml
-  │    config.ts: loadGlobalConfig()       reads ~/.bufo/config.yaml
-  │    config.ts: loadWorkspaceState()     reads ~/.bufo/state/<session>/ws<N>.json
-  │    config.ts: loadWorkspaceMeta()      reads <workspace>/.bufo-meta
-  │    config.ts: isWorkspaceLocked()      checks <workspace>/.bufo-lock
-  │    config.ts: getCustomName()          reads <workspace>/.bufo-name
-  │    exec.ts:   getGitBranch()           runs git -C <dir> rev-parse
-  │    iterm.ts:  getActiveSessions()      osascript → comma-separated session IDs
+  │    config.ts: discoverProjects()      reads ~/.bufo/projects/*.yaml
+  │    config.ts: loadGlobalConfig()      reads ~/.bufo/config.yaml
+  │    config.ts: loadTadpoleState()      reads ~/.bufo/state/<session>/tp<N>.json
+  │    config.ts: loadTadpoleMeta()       reads <tadpole>/.bufo-meta
+  │    config.ts: isTadpoleLocked()       checks <tadpole>/.bufo-lock
+  │    config.ts: getCustomName()         reads <tadpole>/.bufo-name
+  │    exec.ts:   getGitBranch()          runs git -C <dir> rev-parse
+  │    iterm.ts:  getActiveSessions()     osascript → comma-separated session IDs
   │
   └─ Mutations (shell out to bufo)
-       exec.ts: runBufoAsync(args)         /bin/bash "<bufo>" <args>  (async, 30 s timeout)
-       exec.ts: runBufoSync(args)          same, synchronous
-       iterm.ts: focusSession(sessionId)   osascript → iTerm2 activate + select session
+       exec.ts: runBufoAsync(args)        /bin/bash "<bufo>" <args>  (async, 30 s timeout)
+       exec.ts: runBufoSync(args)         same, synchronous
+       iterm.ts: focusSession(sessionId)  osascript → iTerm2 activate + select session
 ```
 
 ### Shared Library (`src/lib/`)
@@ -60,9 +56,9 @@ Command renders
 
 | File | Key exports |
 |------|------------|
-| `types.ts` | `BufoProject`, `BufoWorkspace`, `WorkspaceState`, `WorkspaceMeta`, `GlobalConfig` |
-| `config.ts` | `discoverProjects()`, `loadProject()`, `loadGlobalConfig()`, `loadWorkspaceState()`, `loadWorkspaceMeta()`, `isWorkspaceLocked()`, `getCustomName()`, `bufoExists()` |
-| `bufo.ts` | `getAllWorkspaces()`, `discoverWorkspaces()`, `getWorkspaceTitle()`, `getWorkspaceSubtitle()` |
+| `types.ts` | `BufoProject`, `BufoTadpole`, `TadpoleState`, `TadpoleMeta`, `GlobalConfig` |
+| `config.ts` | `discoverProjects()`, `loadProject()`, `loadGlobalConfig()`, `loadTadpoleState()`, `loadTadpoleMeta()`, `isTadpoleLocked()`, `getCustomName()`, `bufoExists()` |
+| `bufo.ts` | `getAllTadpoles()`, `discoverTadpoles()`, `getTadpoleTitle()`, `getTadpoleSubtitle()` |
 | `exec.ts` | `runBufoAsync()`, `runBufoSync()`, `getGitBranch()` |
 | `iterm.ts` | `getActiveSessions()`, `focusSession()`, `isItermRunning()` |
 
@@ -76,13 +72,13 @@ Command renders
 
 All `bufo` invocations use a hardened `PATH` that includes Homebrew prefixes, since Raycast runs without a login shell environment.
 
-### Workspace Metadata Files
+### Tadpole Metadata Files
 
-Written by the `bufo` CLI into the workspace directory root:
+Written by the `bufo` CLI into the tadpole directory root:
 
 | File | Purpose |
 |------|---------|
-| `.bufo-meta` | JSON: `WorkspaceMeta` — type (`workspace`/`ticket`/`pr`), ticket ID, PR number/title/URL |
+| `.bufo-meta` | JSON: `TadpoleMeta` — type (`tadpole`/`ticket`/`pr`), ticket ID, PR number/title/URL |
 | `.bufo-lock` | Presence = locked (empty file) |
 | `.bufo-name` | Custom display name (plain text) |
 
@@ -108,7 +104,7 @@ npm run fix-lint  # ray lint --fix
 
 ### Running the Extension
 
-**Dev mode is the only way to use an unpublished local extension.** Run `npm run dev` — this registers all four commands in Raycast and keeps them available as long as the process is running. There is no "import from filesystem" option for non-store extensions.
+Run `npm run dev` — this registers all commands in Raycast and keeps them available as long as the process is running. There is no "import from filesystem" option for non-store extensions.
 
 Alternatives if a persistent background process is undesirable:
 - **Raycast Teams (Pro)** — share private extensions without publishing publicly
@@ -144,7 +140,7 @@ Since `lib/` is shared with the daemon, keep functions generic — no `@raycast/
 - **Read config directly, mutate via CLI** — never write to `~/.bufo` files directly from the extension; always shell out to `bufo` for mutations so the CLI remains the single source of truth
 - **`useCachedPromise` for all async data** — provides keepPreviousData and automatic cache; don't use raw `useEffect` + `useState` for data fetching
 - **Silent AppleScript failures** — `focusSession` and `getActiveSessions` swallow errors; iTerm2 may not be running
-- **30-second timeout on `bufo` calls** — workspace creation can be slow (git worktree + submodules); don't lower this
+- **30-second timeout on `bufo` calls** — tadpole creation can be slow (git worktree + submodules); don't lower this
 - **TypeScript strict** — tsconfig inherits Raycast's strict config; no `any`
 
 ## Verification Checklist
@@ -153,9 +149,7 @@ After changes, verify:
 
 - [ ] `npm run build` succeeds with no TypeScript or lint errors
 - [ ] `npm run dev` registers commands in Raycast without errors
-- [ ] **List Workspaces** shows projects and workspaces; active ones have green dot
-- [ ] **New Workspace** form submits and creates a workspace via `bufo`
-- [ ] **Switch Project** shows project list with active/total counts and default star
-- [ ] **Quick Actions** runs `doctor` and shows output in toast
+- [ ] **List Tadpoles** shows projects and tadpoles; active ones have green dot
+- [ ] **New Tadpole** form submits and creates a tadpole via `bufo`
 - [ ] No `@raycast/api` imports inside `src/lib/` files
 - [ ] `daemon/src/lib/` symlink still resolves correctly after any `lib/` file additions

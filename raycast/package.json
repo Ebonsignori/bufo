@@ -2,41 +2,29 @@
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "bufo",
   "title": "Bufo",
-  "description": "Manage bufo workspaces from Raycast",
+  "description": "Manage bufo tadpoles from Raycast",
   "icon": "command-icon.png",
-  "author": "evan",
+  "author": "ebonsignori",
   "categories": [
     "Developer Tools"
   ],
   "license": "MIT",
   "commands": [
     {
-      "name": "list-workspaces",
-      "title": "List Workspaces",
-      "description": "List all bufo workspaces across projects",
+      "name": "list-tadpoles",
+      "title": "List Tadpoles",
+      "description": "List all bufo tadpoles across projects",
       "mode": "view"
     },
     {
-      "name": "new-workspace",
-      "title": "New Workspace",
-      "description": "Create a new bufo workspace",
-      "mode": "view"
-    },
-    {
-      "name": "switch-project",
-      "title": "Switch Project",
-      "description": "List and manage bufo projects",
-      "mode": "view"
-    },
-    {
-      "name": "quick-actions",
-      "title": "Quick Actions",
-      "description": "Common bufo actions",
+      "name": "new-tadpole",
+      "title": "New Tadpole",
+      "description": "Create a new bufo tadpole",
       "mode": "view"
     }
   ],
   "dependencies": {
-    "@raycast/api": "^1.83.0",
+    "@raycast/api": "^1.104.11",
     "@raycast/utils": "^2.2.3",
     "js-yaml": "^4.1.0"
   },

@@ -13,24 +13,16 @@ type ExtensionPreferences = {}
 declare type Preferences = ExtensionPreferences
 
 declare namespace Preferences {
-  /** Preferences accessible in the `list-workspaces` command */
-  export type ListWorkspaces = ExtensionPreferences & {}
-  /** Preferences accessible in the `new-workspace` command */
-  export type NewWorkspace = ExtensionPreferences & {}
-  /** Preferences accessible in the `switch-project` command */
-  export type SwitchProject = ExtensionPreferences & {}
-  /** Preferences accessible in the `quick-actions` command */
-  export type QuickActions = ExtensionPreferences & {}
+  /** Preferences accessible in the `list-tadpoles` command */
+  export type ListTadpoles = ExtensionPreferences & {}
+  /** Preferences accessible in the `new-tadpole` command */
+  export type NewTadpole = ExtensionPreferences & {}
 }
 
 declare namespace Arguments {
-  /** Arguments passed to the `list-workspaces` command */
-  export type ListWorkspaces = {}
-  /** Arguments passed to the `new-workspace` command */
-  export type NewWorkspace = {}
-  /** Arguments passed to the `switch-project` command */
-  export type SwitchProject = {}
-  /** Arguments passed to the `quick-actions` command */
-  export type QuickActions = {}
+  /** Arguments passed to the `list-tadpoles` command */
+  export type ListTadpoles = {}
+  /** Arguments passed to the `new-tadpole` command */
+  export type NewTadpole = {}
 }
 

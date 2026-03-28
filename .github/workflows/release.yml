@@ -19,6 +19,11 @@ jobs:
           # Fetch full history so the version-bump commit can be pushed to main
           fetch-depth: 0
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Validate version format
         run: |
           if ! echo "${{ inputs.version }}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
@@ -52,9 +57,17 @@ jobs:
           # Bundle lib directory (extracts as lib/ relative to install dir)
           tar -czf bufo-lib.tar.gz -C src lib
 
+          # Build daemon and bundle dist/ + package.json into a tarball
+          cd daemon
+          npm ci
+          npm run build
+          cd ..
+          tar -czf bufo-daemon.tar.gz -C daemon dist package.json
+
           # Generate SHA256 checksums
           sha256sum bufo > bufo.sha256
           sha256sum bufo-lib.tar.gz > bufo-lib.tar.gz.sha256
+          sha256sum bufo-daemon.tar.gz > bufo-daemon.tar.gz.sha256
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -65,4 +78,6 @@ jobs:
             bufo.sha256
             bufo-lib.tar.gz
             bufo-lib.tar.gz.sha256
+            bufo-daemon.tar.gz
+            bufo-daemon.tar.gz.sha256
           generate_release_notes: true

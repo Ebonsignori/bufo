@@ -701,7 +701,51 @@ main() {
       tar -xzf "$tmp_lib" -C "$install_dir" lib/
       rm -f "$tmp_lib" "$tmp_lib_hash"
 
+      # Download and update daemon dist
+      local tmp_daemon tmp_daemon_hash
+      tmp_daemon=$(mktemp /tmp/bufo-update-daemon.XXXXXX)
+      tmp_daemon_hash=$(mktemp /tmp/bufo-update-daemon-hash.XXXXXX)
+
+      if ! curl -fsSL "${base_url}/bufo-daemon.tar.gz" -o "$tmp_daemon" 2>/dev/null; then
+        error "Failed to download daemon update"
+        rm -f "$tmp_daemon" "$tmp_daemon_hash"
+        exit 1
+      fi
+      if ! curl -fsSL "${base_url}/bufo-daemon.tar.gz.sha256" -o "$tmp_daemon_hash" 2>/dev/null; then
+        error "Failed to download daemon checksum"
+        rm -f "$tmp_daemon" "$tmp_daemon_hash"
+        exit 1
+      fi
+
+      local expected_daemon_hash actual_daemon_hash
+      expected_daemon_hash=$(awk '{print $1}' "$tmp_daemon_hash")
+      actual_daemon_hash=$($sha_cmd "$tmp_daemon" | awk '{print $1}')
+
+      if [ "$actual_daemon_hash" != "$expected_daemon_hash" ]; then
+        error "Daemon integrity check failed — update aborted"
+        error "  expected: $expected_daemon_hash"
+        error "  got:      $actual_daemon_hash"
+        rm -f "$tmp_daemon" "$tmp_daemon_hash"
+        exit 1
+      fi
+
+      mkdir -p "$install_dir/daemon"
+      tar -xzf "$tmp_daemon" -C "$install_dir/daemon"
+      rm -f "$tmp_daemon" "$tmp_daemon_hash"
+
+      # Install/update runtime dependencies
+      if command_exists npm; then
+        npm install --omit=dev --legacy-peer-deps --prefix "$install_dir/daemon" 2>&1 || \
+          echo -e "${YELLOW}Warning: npm install for daemon failed${NC}"
+      fi
+
       echo -e "${GREEN}Updated: v$current_version → ${latest_version#v}${NC}"
+
+      # Restart daemon if it's already running
+      if launchctl list 2>/dev/null | grep -q "com.bufo.daemon"; then
+        echo -e "${CYAN}Restarting daemon...${NC}"
+        "$install_dir/bufo" web restart 2>/dev/null || true
+      fi
       ;;
     "--version"|"-v")
       echo ' ◎ , ◎'

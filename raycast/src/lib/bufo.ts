@@ -15,9 +15,6 @@ export function getTadpoleDir(project: BufoProject, num: number): string {
   return join(project.tadpole_base, `${project.tadpoles.prefix}-${num}`);
 }
 
-// Legacy alias
-export const getWorkspaceDir = getTadpoleDir;
-
 export function discoverTadpoles(project: BufoProject, activeSessions?: Set<string>): BufoTadpole[] {
   const tadpoles: BufoTadpole[] = [];
 
@@ -53,9 +50,6 @@ export function discoverTadpoles(project: BufoProject, activeSessions?: Set<stri
   return tadpoles;
 }
 
-// Legacy alias
-export const discoverWorkspaces = discoverTadpoles;
-
 export function getAllTadpoles(): { projects: BufoProject[]; tadpoles: BufoTadpole[] } {
   const projects = discoverProjects();
   const activeSessions = getActiveSessions();
@@ -66,12 +60,6 @@ export function getAllTadpoles(): { projects: BufoProject[]; tadpoles: BufoTadpo
   }
 
   return { projects, tadpoles };
-}
-
-// Legacy alias (also returns tadpoles as workspaces for daemon compatibility)
-export function getAllWorkspaces(): { projects: BufoProject[]; workspaces: BufoTadpole[] } {
-  const { projects, tadpoles } = getAllTadpoles();
-  return { projects, workspaces: tadpoles };
 }
 
 export function getTadpoleTitle(tp: BufoTadpole): string {
@@ -87,15 +75,9 @@ export function getTadpoleTitle(tp: BufoTadpole): string {
   return `${tp.project.tadpoles.prefix}-${tp.number}`;
 }
 
-// Legacy alias
-export const getWorkspaceTitle = getTadpoleTitle;
-
 export function getTadpoleSubtitle(tp: BufoTadpole): string {
   const parts: string[] = [];
   if (tp.branch && tp.branch !== "unknown") parts.push(tp.branch);
-  if (tp.meta?.type && tp.meta.type !== "workspace" && tp.meta.type !== "tadpole") parts.push(tp.meta.type.toUpperCase());
+  if (tp.meta?.type && tp.meta.type !== "tadpole") parts.push(tp.meta.type.toUpperCase());
   return parts.join(" | ");
 }
-
-// Legacy alias
-export const getWorkspaceSubtitle = getTadpoleSubtitle;

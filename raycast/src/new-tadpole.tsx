@@ -22,12 +22,17 @@ export default function NewTadpole() {
         <ActionPanel>
           <Action.SubmitForm
             title="Create Tadpole"
-            onSubmit={async (values: { project: string; number: string; ticket: string }) => {
+            onSubmit={async (values: { project: string; source: string; number: string }) => {
               setIsSubmitting(true);
               try {
                 let cmd: string;
-                if (values.ticket) {
-                  cmd = `@${values.project} ticket ${values.ticket}`;
+                if (values.source) {
+                  const isPr =
+                    values.source.includes("github.com") && values.source.includes("/pull/") ||
+                    /^\d+$/.test(values.source.trim());
+                  cmd = isPr
+                    ? `@${values.project} pr ${values.source}`
+                    : `@${values.project} ticket ${values.source}`;
                 } else if (values.number) {
                   cmd = `@${values.project} tp ${values.number}`;
                 } else {
@@ -58,16 +63,16 @@ export default function NewTadpole() {
         ))}
       </Form.Dropdown>
       <Form.TextField
-        id="number"
-        title="Tadpole Number"
-        placeholder="Auto-detect next free"
-        info="Leave blank to automatically use the next available tadpole."
+        id="source"
+        title="Issue / Ticket / PR URL"
+        placeholder="PROJ-123, https://linear.app/..., or https://github.com/.../pull/..."
+        info="Creates a tadpole from a Linear ticket or GitHub PR. If provided, overrides tadpole number."
       />
       <Form.TextField
-        id="ticket"
-        title="Ticket ID or URL"
-        placeholder="PROJ-123 or https://linear.app/..."
-        info="If provided, creates a ticket tadpole instead. Overrides tadpole number."
+        id="number"
+        title="Tadpole Number"
+        placeholder="Leave blank to auto detect next free"
+        info="The specific tadpole slot to use. Leave blank to automatically use the next available."
       />
     </Form>
   );

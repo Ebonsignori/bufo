@@ -18,7 +18,7 @@ export interface BufoProject {
 }
 
 export interface TadpoleMeta {
-  type?: "workspace" | "tadpole" | "ticket" | "pr";
+  type?: "tadpole" | "ticket" | "pr";
   name?: string;
   ticket?: string;
   ticket_url?: string;
@@ -29,7 +29,7 @@ export interface TadpoleMeta {
 }
 
 export interface TadpoleState {
-  workspace: number | string;
+  tadpole: number | string;
   window_id: string;
   tab_id: string;
   panes: {
