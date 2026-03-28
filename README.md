@@ -4,6 +4,8 @@ An iTerm2-native workspace (tadpoles) manager for multi-repo development on macO
 
 Each tadpole is a **git worktree** with its own branch. Opening a tadpole creates an iTerm2 window/tab with 3 panes (terminal, server, main) and runs configured commands in each.
 
+![bufo screenshot](assets/screenshot.png)
+
 ## Install
 
 ### Prerequisites
