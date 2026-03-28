@@ -26,5 +26,3 @@ Thumbs.db
 test-output/
 coverage/
 
-# Claude
-.claude/
