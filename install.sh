@@ -240,6 +240,9 @@ cp "$src_dir/../daemon/com.bufo.daemon.plist.template" "$INSTALL_DIR/daemon/"
 # Install compiled daemon JS so the LaunchAgent can actually run server.js
 mkdir -p "$INSTALL_DIR/daemon/dist"
 cp -r "$src_dir/../daemon/dist/." "$INSTALL_DIR/daemon/dist/"
+# Install pre-built web UI assets (index.html, xterm-bundle.js, xterm.css)
+mkdir -p "$INSTALL_DIR/daemon/public"
+cp -r "$src_dir/../daemon/public/." "$INSTALL_DIR/daemon/public/"
 # Copy package.json so npm can install runtime dependencies
 cp "$src_dir/../daemon/package.json" "$INSTALL_DIR/daemon/"
 # Install runtime dependencies (ws, js-yaml, etc.) needed by server.js
@@ -249,7 +252,7 @@ npm install --omit=dev --legacy-peer-deps --prefix "$INSTALL_DIR/daemon" 2>&1 ||
 
 # Install install.sh itself so 'bufo install' can re-run it,
 # stamping in INSTALL_DIR as the repo dir so _setup_web_plist can find daemon/
-sed "s|__BUFO_REPO_DIR__|$INSTALL_DIR|g" "$src_dir/../install.sh" > "$INSTALL_DIR/install.sh"
+LC_ALL=C sed "s|__BUFO_REPO_DIR__|$INSTALL_DIR|g" "$src_dir/../install.sh" > "$INSTALL_DIR/install.sh"
 chmod +x "$INSTALL_DIR/install.sh"
 
 [ -n "$tmp_dir" ] && rm -rf "$tmp_dir"
