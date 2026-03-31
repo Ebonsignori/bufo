@@ -156,7 +156,7 @@ show_init() {
       echo -e "${CYAN}Next steps:${NC}"
       echo "  1. Review config: bufo @$alias_input config"
       echo "  2. Run 'bufo @$alias_input config scan' to detect ports"
-      echo "  3. Run 'bufo @$alias_input tp 1' to create your first tadpole"
+      echo "  3. Run 'bufo @$alias_input spawn' to create your first tadpole"
       return
     fi
     echo ""
@@ -244,6 +244,11 @@ layout:
 # submodules:
 #   - path: my-submodule
 #     reset_to: origin/main
+#
+# ticket:
+#   linear_team: myteam          # auto-select this project for linear.app/myteam/... URLs
+#   github_repo: owner/repo      # auto-select this project for github.com/owner/repo/issues/...
+#   linear_base_url: https://linear.app/myteam/issue  # constructs clickable ticket links
 EOF
 
   # Append env_sync if .env files were detected
@@ -266,9 +271,9 @@ EOF
   echo "     - main pane: your main tool (e.g., claude)"
   if [ "$env_count" -gt 0 ]; then
     echo "  2. Optionally add ports/overrides to env_sync (run 'bufo @$alias_input config scan' for guidance)"
-    echo "  3. Run 'bufo @$alias_input tp 1' to create your first tadpole"
+    echo "  3. Run 'bufo @$alias_input spawn' to create your first tadpole"
   else
-    echo "  2. Run 'bufo @$alias_input tp 1' to create your first tadpole"
+    echo "  2. Run 'bufo @$alias_input spawn' to create your first tadpole"
   fi
   echo ""
 }

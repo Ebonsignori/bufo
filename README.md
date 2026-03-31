@@ -20,7 +20,7 @@ Each tadpole is a **git worktree** with its own branch. Opening a tadpole create
 curl -fsSL https://github.com/Ebonsignori/bufo/releases/latest/download/install.sh | bash
 ```
 
-This installs `bufo`, installs required dependencies (`git`, `yq`, `jq` via Homebrew), adds `~/.local/bin` to your PATH, and walks you through configuring iTerm2 (keyboard shortcuts, clipboard paste, session logging, and the web daemon).
+This installs `bufo`, installs required dependencies (`git`, `yq`, `jq` via Homebrew), adds `~/.local/bin` to your PATH, and walks you through configuring iTerm2 (keyboard shortcuts, clipboard paste, session logging, and the web daemon). The installer will also offer to install the [Raycast extension](#raycast-extension) if Raycast is detected.
 
 To skip the iTerm2 setup step:
 
@@ -161,6 +161,8 @@ bufo config                # Show configuration
 bufo config scan           # Auto-detect .env files and ports
 bufo doctor                # Diagnose issues
 bufo ports                 # Show port usage
+bufo raycast install       # Install the Raycast extension
+bufo raycast dev           # Start Raycast extension in dev/hot-reload mode
 bufo cheat                 # Full cheat sheet
 ```
 
@@ -188,6 +190,32 @@ companions:
 ```
 
 Companion clones live at `$tadpole_base/<name>` (alongside `tp-1…tp-N`, not inside them). On each tadpole create or open, bufo clones any missing companions and symlinks them in. Symlink names are added to `.git/info/exclude` so they never show up in `git status`.
+
+## Raycast Extension
+
+Bufo includes a [Raycast](https://raycast.com) extension with commands for managing tadpoles and sessions without leaving the keyboard:
+
+| Command | Description |
+|---|---|
+| **List Tadpoles** | Browse all tadpoles across projects — focus, open, lock/unlock, cleanup, destroy |
+| **New Tadpole** | Create a tadpole from a ticket/PR URL or slot number |
+| **List Sessions** | Browse all sessions — resume, focus, delete |
+| **New Session** | Start a new named session |
+| **New Main Tadpole** | Open the main repo checkout directly (no worktree) |
+
+### Install
+
+The installer offers to install the extension automatically. To install or update manually:
+
+```bash
+bufo raycast install   # Copy pre-built extension to Raycast (no npm required)
+```
+
+To start the extension with hot-reload for development (requires npm and the `ray` CLI):
+
+```bash
+bufo raycast dev
+```
 
 ## Configuration
 

@@ -81,8 +81,9 @@ Changes take effect immediately with no restart required.
 
 | File | Used by | Template variables |
 |---|---|---|
-| `court-judge.md` | `bufo chorus` / `bufo court` — Judge + Reviewer A instructions | — |
-| `reviewer-b.md` | `bufo chorus` / `bufo court` — Codex (Reviewer B) prompt | — |
+| `chorus-conductor.md` | `bufo chorus` — Orchestrator agent instructions | — |
+| `singer.md` | `bufo chorus` — Shared reviewer agent prompt (all singers) | `{output_file}` |
+| `singer-codex.md` | `bufo chorus` — Reviewer agent (Codex) prompt override | `{output_file}` |
 | `review-standard.md` | `bufo review` — single-agent PR review | — |
 | `review-summary.md` | `bufo review` / `bufo chorus` — auto-generated session summary | — |
 | `pr-open.md` | `bufo pr <N>` — prompt sent when opening a PR workspace | `{number}` `{title}` `{url}` `{repo}` `{branch}` |
@@ -132,61 +133,53 @@ Per-project files take priority over the global files in this directory. The har
 ## Notes
 
 - **`claude-md-team-mode.md`** must keep `## Team Mode` as its first heading — bufo uses it to avoid writing duplicate sections into `.claude/CLAUDE.md`.
-- **`reviewer-b.md`** is passed as a single shell argument to `codex exec`. Keep it as one paragraph; line breaks are collapsed to spaces automatically.
+- **`singer.md`** is the shared reviewer prompt used by all singer tools. To override for a specific tool, create `singer-codex.md`, `singer-claude.md`, etc. — tool-specific files take priority.
+- **`singer-codex.md`** is passed as a single shell argument to `codex exec`. Keep it as one paragraph; line breaks are collapsed to spaces automatically.
+- **`chorus-conductor.md`** defines the conductor agent instructions. The conductor waits for singers to finish, then verifies and aggregates findings.
 - Running `bufo install` will create any missing prompt files but will **never overwrite** files you have edited.'
 
   # ---------------------------------------------------------------------------
-  # court-judge.md — Judge instructions for bufo chorus / bufo court
-  # Note: The Reviewer A sub-prompt is embedded in this template at the
-  # "Use Task tool" block. Edit that section to customize Reviewer A's prompt.
+  # chorus-conductor.md — Conductor agent instructions for bufo chorus
+  # The conductor waits for all singers to finish, then verifies and aggregates.
   # ---------------------------------------------------------------------------
-  _write_prompt_if_missing "court-judge" \
-'## Court Review Protocol
+  _write_prompt_if_missing "chorus-conductor" \
+'## Chorus Review Protocol
 
-You are the **JUDGE** in a code review court. You will orchestrate a Claude reviewer and collect testimony from the Codex reviewer running in the adjacent pane, then deliver a final verdict.
+You are the **CONDUCTOR** of a multi-agent code review. The singers are already running independently in adjacent panes — do NOT spawn any additional agents. Your job is to wait for all of them to finish, then validate and aggregate their findings into a final verdict.
 
-### Your Role as Judge:
-- **Orchestrate** the review process
-- **Verify** all findings by tracing to actual code
-- **Investigate** when reviewers disagree
-- **Synthesize** a final verdict with zero false positives
+### Your Role as Conductor:
+- **Wait** for all singers to complete their independent reviews
+- **Collect** findings from every singer'\''s output file
+- **Verify** each finding by tracing it to actual code
+- **Resolve** disagreements between singers
+- **Deliver** a final verdict with zero false positives
 
-### Phase 1: Empanel the Reviewers
+### Phase 1: Wait for the Singers
 
-**Reviewer A (Claude):** Spawn a Claude reviewer agent:
-```
-Use Task tool:
-  subagent_type: "general-purpose"
-  prompt: "You are Reviewer A. Review this PR for bugs, security issues, and code quality. Be thorough but avoid false positives. Structure findings as Critical/Warning/Suggestion with file:line references. Here is the context: [include PR diff]"
-```
+All singers are already running. Poll for their output files using the Read tool every ~30 seconds (up to 10 minutes). If a file contains "Singer Failed", that singer had an error — note it and proceed without their findings. If a file does not appear within 10 minutes, proceed without that singer'\''s findings.
 
-**Reviewer B (Codex):** Already running in the adjacent pane. It will save its findings to `codex-review.md` in the current directory when done. If Codex is not available, proceed with Reviewer A only.
+### Phase 2: Collect
 
-Wait for Reviewer A to complete. Then check if `codex-review.md` exists (poll with the Read tool every ~30 seconds, up to 5 minutes). If it appears, read it. If it doesn'\''t appear in time, proceed with Reviewer A'\''s findings only.
+Once all available singer files are present, read each one and compile all findings:
+- List every finding from every singer
+- Note which singers flagged each issue
+- Note where singers agree and where they differ
 
-### Phase 2: Collect Testimony
+### Phase 3: Verify
 
-Document what each reviewer found:
-- List Reviewer A'\''s findings
-- List Reviewer B'\''s findings (from `codex-review.md`, if available)
-- Note agreements and disagreements
-
-### Phase 3: Verify & Investigate
-
-For EACH finding from either reviewer:
-
-1. **Trace to code**: Use Read tool to examine the actual file and line
-2. **Verify the issue**: Is this a real problem or false positive?
-3. **Check context**: Does surrounding code explain/mitigate it?
-4. **When reviewers disagree**: Investigate deeper, examine edge cases
+Trace each unique finding to actual code. For every claimed issue:
+1. Read the relevant file at the referenced line
+2. Determine if the finding is a real problem or a false positive
+3. Check surrounding context and edge cases
+4. When singers disagree, investigate further
 
 **Critical Rule**: Do NOT include any finding you haven'\''t personally verified in the code.
 
-### Phase 4: Deliberate
+### Phase 4: Resolve
 
-For each potential issue, document:
-- What was claimed
-- What you found when you traced the code
+For each finding, document:
+- What was claimed, and by which singer(s)
+- What you found when you examined the code
 - Your ruling: CONFIRMED / DISMISSED / NEEDS-INVESTIGATION
 - Reasoning
 
@@ -195,38 +188,46 @@ For each potential issue, document:
 Write `review-output.md` with:
 
 ```markdown
-# Court Review: PR #XXXX
+# Chorus Review: PR #XXXX
 
-## Verdict Summary
+## Summary
 [1-2 sentence overall assessment]
 
 ## Confirmed Issues
 [Issues verified by tracing code - include file:line and evidence]
 
 ## Dismissed Claims
-[What reviewers flagged but you determined were false positives - explain why]
+[What singers flagged but you determined were false positives - explain why]
 
 ## Recommendations
 [Actionable next steps]
 
-## Court Record
-[Summary of the review process, who found what, how disagreements were resolved]
+## Review Record
+[Which singers participated, what each found, how disagreements were resolved]
 ```
 
-### Rules of the Court:
-1. **No false positives**: Only confirm what you'\''ve verified in the code
-2. **Show your work**: Document how you verified each finding
-3. **Be thorough**: Check edge cases, error paths, security implications
-4. **Cite evidence**: Every confirmed issue needs file:line proof
-5. **Explain dismissals**: If you reject a reviewer'\''s finding, say why'
+### Rules:
+1. **Do not spawn agents** — the singers are already running; your role is to wait and collect
+2. **No false positives** — only confirm what you'\''ve verified in the code
+3. **Show your work** — document how you verified each finding
+4. **Cite evidence** — every confirmed issue needs file:line proof
+5. **Explain dismissals** — if you reject a finding, say why'
 
   # ---------------------------------------------------------------------------
-  # reviewer-b.md — Codex (Reviewer B) prompt for bufo chorus
+  # singer.md — Shared reviewer agent prompt for all singer tools in bufo chorus
+  # Tool-specific overrides (singer-codex.md, singer-claude.md, etc.) take precedence.
+  # Variable: {output_file} — absolute path where the singer should save findings
+  # ---------------------------------------------------------------------------
+  _write_prompt_if_missing "singer" \
+'You are a reviewer agent in a bufo multi-agent code review. Read context.md for the full PR diff. Review independently for bugs, security issues, and code quality. Structure findings as Critical/Warning/Suggestion with file:line references. Save your complete findings to {output_file} when done.'
+
+  # ---------------------------------------------------------------------------
+  # singer-codex.md — Codex reviewer agent prompt for bufo chorus
   # Note: This prompt is passed as a single-line shell argument to codex exec.
   # Keep it as one paragraph — line breaks are collapsed to spaces automatically.
   # ---------------------------------------------------------------------------
-  _write_prompt_if_missing "reviewer-b" \
-'You are Reviewer B in a code review court. Read context.md for the full PR diff. Review independently for bugs, security issues, and code quality. Structure findings as Critical/Warning/Suggestion with file:line references. Save your complete findings to codex-review.md when done.'
+  _write_prompt_if_missing "singer-codex" \
+'You are a reviewer agent in a bufo multi-agent code review. Read context.md for the full PR diff. Review independently for bugs, security issues, and code quality. Structure findings as Critical/Warning/Suggestion with file:line references. Save your complete findings to {output_file} when done.'
 
   # ---------------------------------------------------------------------------
   # review-standard.md — Instructions for single-agent PR review (bufo review)

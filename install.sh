@@ -95,7 +95,42 @@ prompt_ai_agent() {
   echo ""
 }
 
-# Write default_ai_tool to ~/.bufo/config.yaml.
+prompt_raycast() {
+  local dist_dir="$1"
+
+  # Check if Raycast is installed
+  local raycast_status=""
+  if [ -d "/Applications/Raycast.app" ] || [ -d "$HOME/Applications/Raycast.app" ]; then
+    raycast_status="${GREEN}[installed]${NC}"
+  else
+    raycast_status="${YELLOW}[not found]${NC}"
+  fi
+
+  echo -e "${CYAN}Install the Raycast extension?${NC} $(echo -e "$raycast_status")"
+  echo -e "  Adds 'List Tadpoles', 'New Tadpole', 'List Sessions', and more to Raycast."
+  echo ""
+
+  local choice
+  read -p "Install Raycast extension? [Y/n]: " choice
+  choice="${choice:-Y}"
+
+  if [[ "$choice" =~ ^[Yy]$ ]]; then
+    local extensions_dir="$HOME/.config/raycast/extensions/bufo"
+    mkdir -p "$extensions_dir"
+    cp -r "$dist_dir"/. "$extensions_dir/"
+    rm -f "$extensions_dir/cli.pid" "$extensions_dir/dev.log"
+    echo -e "${GREEN}✓${NC} Raycast extension installed."
+    echo -e "  Open Raycast and search for 'Bufo' to use it."
+    if [ ! -d "/Applications/Raycast.app" ] && [ ! -d "$HOME/Applications/Raycast.app" ]; then
+      echo -e "  ${YELLOW}(Raycast not detected — install it from raycast.com first)${NC}"
+    fi
+  else
+    echo -e "  Skipped. Run ${CYAN}bufo raycast install${NC} at any time to install later."
+  fi
+  echo ""
+}
+
+
 # Writes default_ai_tool to ~/.bufo/config.yaml.
 # Always honors the user's explicit choice, showing what changed if overriding a prior value.
 # Uses yq (already required by bufo) for safe in-place YAML editing.
@@ -236,12 +271,18 @@ else
 fi
 
 # Install entry point and lib
-cp "$src_dir/bufo" "$INSTALL_DIR/$SCRIPT_NAME"
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/src/bufo" ]; then
+  # Local checkout: symlink so edits to src/ take effect immediately
+  ln -sf "$src_dir/bufo" "$INSTALL_DIR/$SCRIPT_NAME"
+  rm -rf "$INSTALL_DIR/lib"
+  ln -sf "$src_dir/lib" "$INSTALL_DIR/lib"
+else
+  cp "$src_dir/bufo" "$INSTALL_DIR/$SCRIPT_NAME"
+  # Install lib directory alongside the script
+  mkdir -p "$INSTALL_DIR/lib"
+  cp -r "$src_dir/lib/"* "$INSTALL_DIR/lib/"
+fi
 chmod +x "$INSTALL_DIR/$SCRIPT_NAME"
-
-# Install lib directory alongside the script
-mkdir -p "$INSTALL_DIR/lib"
-cp -r "$src_dir/lib/"* "$INSTALL_DIR/lib/"
 
 # Install daemon directory (needed by _setup_web_plist for the LaunchAgent plist)
 mkdir -p "$INSTALL_DIR/daemon"
@@ -263,6 +304,17 @@ npm install --omit=dev --legacy-peer-deps --prefix "$INSTALL_DIR/daemon" 2>&1 ||
 # stamping in INSTALL_DIR as the repo dir so _setup_web_plist can find daemon/
 LC_ALL=C sed "s|__BUFO_REPO_DIR__|$INSTALL_DIR|g" "$src_dir/../install.sh" > "$INSTALL_DIR/install.sh"
 chmod +x "$INSTALL_DIR/install.sh"
+
+# Stamp raycast paths into installed raycast.sh so 'bufo raycast' works from
+# the installed copy without needing the original repo checkout.
+# Only stamp when installing from a local repo checkout (SCRIPT_DIR has src/bufo).
+# When re-running from the installed copy, the paths are already stamped correctly.
+if [ -f "$SCRIPT_DIR/src/bufo" ]; then
+  LC_ALL=C sed -i '' \
+    -e "s|__BUFO_RAYCAST_DIST__|${SCRIPT_DIR}/raycast/dist-install|g" \
+    -e "s|__BUFO_RAYCAST_DIR__|${SCRIPT_DIR}/raycast|g" \
+    "$INSTALL_DIR/lib/raycast.sh"
+fi
 
 [ -n "$tmp_dir" ] && rm -rf "$tmp_dir"
 
@@ -361,6 +413,13 @@ echo -e "${GREEN}✓${NC} Default prompt files written to ~/.bufo/prompts/"
 echo ""
 prompt_ai_agent
 
+# Offer Raycast extension install if pre-built assets are available
+_raycast_dist="${SCRIPT_DIR}/raycast/dist-install"
+if [ -d "$_raycast_dist" ] && [ "$skip_setup" = false ]; then
+  echo ""
+  prompt_raycast "$_raycast_dist"
+fi
+
 echo ' ◎ , ◎'
 echo '（ -──）  Installation complete!'
 echo -e "/(    )\\"
@@ -370,7 +429,7 @@ echo ""
 echo "Next steps:"
 echo "  1. Run 'source ~/.zshrc' (or open new terminal)"
 echo "  2. Run 'bufo init' to create your config"
-echo "  3. Run 'bufo tp 1' to start your first tadpole"
+echo "  3. Run 'bufo spawn' to create your first tadpole"
 echo ""
 echo "Run 'bufo cheat' for a quick reference."
 echo "Run 'bufo install' at any time to re-run this setup."

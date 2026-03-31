@@ -65,8 +65,10 @@ compute_tab_title() {
 
   # If no PR/ticket metadata, show branch (or tadpole name as fallback)
   if [ -z "$title" ]; then
-    local branch
-    branch=$(cd "$dir" && git branch --show-current 2>/dev/null) || true
+    local branch=""
+    if [ -d "$dir" ]; then
+      branch=$(cd "$dir" && git branch --show-current 2>/dev/null) || true
+    fi
     if [ -n "$branch" ] && [ "$branch" != "main" ] && [ "$branch" != "master" ]; then
       title="$branch"
     else
@@ -253,6 +255,9 @@ prepare_tadpole_for_reuse() {
 
   reset_submodules "$dir"
 
+  # Sync MCP servers config from main repo (matches fresh create_workspace behaviour)
+  sync_mcp_servers "$dir"
+
   # Lock the tadpole now that it's being claimed
   touch "$dir/.bufo-lock"
 
@@ -345,7 +350,7 @@ list_tadpoles() {
   if [ "$found" = false ]; then
     echo "  No tadpoles found."
     echo ""
-    echo "Run 'bufo spawn' or 'bufo tp 1' to create a tadpole."
+    echo "Run 'bufo spawn' to create a tadpole."
   fi
 }
 
@@ -787,7 +792,10 @@ EOF
       sleep 0.3
       [ -n "$dev_cmd" ] && iterm_send_text "$TP_SERVER_SID" "$dev_cmd"
 
+      # Interrupt clears any running shell command; /exit quits an interactive Claude session
       iterm_send_interrupt "$TP_MAIN_SID"
+      sleep 0.3
+      iterm_send_text "$TP_MAIN_SID" "/exit"
       sleep 0.5
       [ -n "$claude_cmd" ] && iterm_send_text "$TP_MAIN_SID" "clear && $claude_cmd"
 
@@ -1120,7 +1128,10 @@ continue_tadpole() {
     sleep 0.3
     [ -n "$dev_cmd" ] && iterm_send_text "$TP_SERVER_SID" "$dev_cmd"
 
+    # Interrupt clears any running shell command; /exit quits an interactive Claude session
     iterm_send_interrupt "$TP_MAIN_SID"
+    sleep 0.3
+    iterm_send_text "$TP_MAIN_SID" "/exit"
     sleep 0.5
     [ -n "$claude_cmd" ] && iterm_send_text "$TP_MAIN_SID" "clear && $claude_cmd"
 
@@ -1183,6 +1194,11 @@ find_next_tadpole() {
       num=$((num + 1))
       continue
     fi
+    # A claim with no corresponding workspace is stale (left by a failed/aborted
+    # spawn). Clean it up so the slot can be reused.
+    if [ -d "$claim" ] && ! [ -d "$dir" ]; then
+      rmdir "$claim" 2>/dev/null || true
+    fi
     # Atomically claim this slot; if two processes race, only one mkdir wins
     if mkdir "$claim" 2>/dev/null; then
       echo "$num"
@@ -1234,7 +1250,30 @@ If you need clarification on the requirements, ask me before proceeding.'
 }
 
 # Create a new tadpole with the next available number
+# Flags:
+#   --reuse   Reuse an existing unlocked tadpole instead of creating a new worktree
 create_new_tadpole() {
+  local initial_prompt=""
+  local reuse=false
+  for arg in "$@"; do
+    case "$arg" in
+      --reuse) reuse=true ;;
+      *) initial_prompt="$arg" ;;
+    esac
+  done
+
+  if [ "$reuse" = true ]; then
+    local unlocked_num
+    unlocked_num=$(find_unlocked_tadpole)
+    if [ -n "$unlocked_num" ]; then
+      info "Reusing unlocked tadpole $unlocked_num for @${PROJECT_ALIAS}..."
+      prepare_tadpole_for_reuse "$unlocked_num"
+      open_tadpole "$unlocked_num" "$initial_prompt"
+      return
+    fi
+    info "No unlocked tadpole found — creating new worktree..."
+  fi
+
   local next_num
   next_num=$(find_next_tadpole)
 
@@ -1243,10 +1282,10 @@ create_new_tadpole() {
     exit 1
   fi
 
-  echo -e "${CYAN}Creating new tadpole $next_num...${NC}"
+  echo -e "${CYAN}Creating new tadpole $next_num for @${PROJECT_ALIAS}...${NC}"
   # open_tadpole -> create_workspace will create the real workspace directory.
   # Remove the .claim-N sentinel afterwards so it doesn't accumulate.
-  open_tadpole "$next_num"
+  open_tadpole "$next_num" "$initial_prompt"
   rm -rf "$TADPOLE_BASE/.claim-$next_num" 2>/dev/null || true
 }
 

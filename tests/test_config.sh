@@ -305,8 +305,8 @@ _make_ai_proj() {
 }
 
 CONFIG_FILE="$(_make_ai_proj claude)"; _config_loaded=false; load_config
-run_test "claude: get_ai_interactive_cmd" "[ \"\$(get_ai_interactive_cmd)\" = 'claude --dangerously-skip-permissions --chrome' ]"
-run_test "claude: get_ai_interactive_cmd with session name" "[ \"\$(get_ai_interactive_cmd 'my-session')\" = 'claude --dangerously-skip-permissions --chrome --name my-session' ]"
+run_test "claude: get_ai_interactive_cmd" "[ \"\$(get_ai_interactive_cmd)\" = 'claude --dangerously-skip-permissions' ]"
+run_test "claude: get_ai_interactive_cmd with session name" "[ \"\$(get_ai_interactive_cmd 'my-session')\" = 'claude --dangerously-skip-permissions --name my-session' ]"
 run_test "claude: get_ai_print_cmd"  "[ \"\$(get_ai_print_cmd)\"  = 'claude --print' ]"
 run_test "claude: get_ai_prompt_cmd" "[ \"\$(get_ai_prompt_cmd)\" = 'claude --dangerously-skip-permissions -p' ]"
 
@@ -353,7 +353,7 @@ _make_pipe_proj() {
 
 CONFIG_FILE="$(_make_pipe_proj claude)"; _config_loaded=false; load_config
 run_test "claude: pipe uses stdin" \
-  "[ \"\$(ai_pipe_prompt_file '$PIPE_PROMPT_FILE')\" = \"cat '$PIPE_PROMPT_FILE' | claude --dangerously-skip-permissions --chrome\" ]"
+  "[ \"\$(ai_pipe_prompt_file '$PIPE_PROMPT_FILE')\" = \"cat '$PIPE_PROMPT_FILE' | claude --dangerously-skip-permissions\" ]"
 
 CONFIG_FILE="$(_make_pipe_proj codex)"; _config_loaded=false; load_config
 run_test "codex: pipe uses positional arg" \

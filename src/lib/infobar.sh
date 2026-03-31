@@ -161,11 +161,16 @@ render_infobar() {
   if [ ! -f "$meta_file" ]; then
     local ws_num
     ws_num=$(basename "$dir" | sed "s/${WORKSPACE_PREFIX}-//")
-    if [[ "$ws_num" =~ ^[0-9]+$ ]]; then
-      echo -e "${lock_icon} \033[2mbufo\033[0m #${ws_num}"
+    local fallback_title="${lock_icon}"
+    if [ -n "$PROJECT_ALIAS" ]; then
+      fallback_title="$fallback_title @${PROJECT_ALIAS}"
     else
-      echo -e "${lock_icon} \033[2mbufo\033[0m"
+      fallback_title="$fallback_title \033[2mbufo\033[0m"
     fi
+    if [[ "$ws_num" =~ ^[0-9]+$ ]]; then
+      fallback_title="$fallback_title #${ws_num}"
+    fi
+    echo -e "$fallback_title"
     return
   fi
 
@@ -283,6 +288,8 @@ _BUFO_DIR=$q_dir
 while true; do
   _out=\$("\$_BUFO_BIN" _infobar-render "\$_BUFO_DIR" 2>/dev/null)
   printf '\e[H\e[J%s' "\$_out"
+  _title=\$(printf '%s' "\$_out" | head -1 | sed 's/\x1b\[[0-9;]*m//g')
+  printf '\033]0;%s\007' "\$_title"
   read -t 60 -n 1 -s _k 2>/dev/null || _k=''
   case \$_k in
     c|C)
@@ -390,6 +397,8 @@ _BUFO_DIR=$q_dir
 while true; do
   _out=\$("\$_BUFO_BIN" _infobar-render-main "\$_BUFO_DIR" 2>/dev/null)
   printf '\e[H\e[J%s' "\$_out"
+  _title=\$(printf '%s' "\$_out" | head -1 | sed 's/\x1b\[[0-9;]*m//g')
+  printf '\033]0;%s\007' "\$_title"
   read -t 60 -n 1 -s _k 2>/dev/null || _k=''
   case \$_k in
     p|P)

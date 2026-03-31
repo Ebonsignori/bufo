@@ -1,12 +1,13 @@
-import { readFileSync, existsSync, readdirSync } from "fs";
+import { readFileSync, existsSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import * as yaml from "js-yaml";
-import type { BufoProject, GlobalConfig, TadpoleMeta, TadpoleState } from "./types";
+import type { BufoProject, GlobalConfig, TadpoleMeta, TadpoleState, BufoSession, SessionLayout } from "./types";
 
 const BUFO_DIR = join(homedir(), ".bufo");
 const PROJECTS_DIR = join(BUFO_DIR, "projects");
 const STATE_DIR = join(BUFO_DIR, "state");
+const SESSIONS_DIR = join(BUFO_DIR, "sessions");
 const GLOBAL_CONFIG = join(BUFO_DIR, "config.yaml");
 
 export function getBufoDir(): string {
@@ -77,6 +78,10 @@ export function discoverProjects(): BufoProject[] {
       // skip invalid configs
     }
   }
+  const defaultAlias = loadGlobalConfig().default_project;
+  if (defaultAlias) {
+    projects.sort((a, b) => (a.alias === defaultAlias ? -1 : b.alias === defaultAlias ? 1 : 0));
+  }
   return projects;
 }
 
@@ -116,4 +121,86 @@ export function getCustomName(tadpoleDir: string): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+export function loadSession(
+  projectAlias: string,
+  sessionName: string,
+  activeSessions?: Set<string>
+): BufoSession | undefined {
+  const sessionDir = join(SESSIONS_DIR, projectAlias, sessionName);
+  const sessionFile = join(sessionDir, "session.yaml");
+  if (!existsSync(sessionFile)) return undefined;
+  try {
+    const raw = readFileSync(sessionFile, "utf-8");
+    const doc = yaml.load(raw) as Record<string, unknown>;
+
+    let layout: SessionLayout | undefined;
+    const layoutFile = join(sessionDir, "layout.json");
+    if (existsSync(layoutFile)) {
+      try {
+        layout = JSON.parse(readFileSync(layoutFile, "utf-8")) as SessionLayout;
+      } catch {
+        // stale or malformed layout — ignore
+      }
+    }
+
+    const active = layout?.main_sid ? (activeSessions?.has(layout.main_sid) ?? false) : false;
+    const hasReviewOutput = existsSync(join(sessionDir, "review-output.md"));
+
+    return {
+      name: (doc.name as string) || sessionName,
+      project: (doc.project as string) || projectAlias,
+      created: (doc.created as string) || "",
+      last_accessed: (doc.last_accessed as string) || "",
+      summary: (doc.summary as string) || "",
+      type: ((doc.type as string) || "general") as BufoSession["type"],
+      prs: doc.prs as string[] | undefined,
+      active,
+      hasReviewOutput,
+      layout,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+export function discoverSessions(
+  projectAlias: string,
+  activeSessions?: Set<string>
+): BufoSession[] {
+  const projectSessionsDir = join(SESSIONS_DIR, projectAlias);
+  if (!existsSync(projectSessionsDir)) return [];
+  let entries: string[];
+  try {
+    entries = readdirSync(projectSessionsDir);
+  } catch {
+    return [];
+  }
+  const sessions: BufoSession[] = [];
+  for (const entry of entries) {
+    const fullPath = join(projectSessionsDir, entry);
+    try {
+      if (!statSync(fullPath).isDirectory()) continue;
+    } catch {
+      continue;
+    }
+    const session = loadSession(projectAlias, entry, activeSessions);
+    if (session) sessions.push(session);
+  }
+  return sessions;
+}
+
+export function getAllSessions(
+  activeSessions?: Set<string>
+): { projectAlias: string; sessions: BufoSession[] }[] {
+  const projects = discoverProjects();
+  const result: { projectAlias: string; sessions: BufoSession[] }[] = [];
+  for (const project of projects) {
+    const sessions = discoverSessions(project.alias, activeSessions);
+    if (sessions.length > 0) {
+      result.push({ projectAlias: project.alias, sessions });
+    }
+  }
+  return result;
 }

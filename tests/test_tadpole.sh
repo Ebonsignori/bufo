@@ -108,14 +108,17 @@ run_test "Name with hash and dash" "[ '$(get_tadpole_name 1)' = 'PR #99 - long d
 section "Tadpole Discovery Tests"
 
 run_test "find_next_tadpole skips existing" "[ '$(find_next_tadpole)' = '4' ]"
+rm -rf "$TADPOLE_BASE"/.claim-* 2>/dev/null
 
 # Create a gap
 mkdir -p "$TADPOLE_BASE/$TADPOLE_PREFIX-5"
 run_test "find_next_tadpole finds gap at 4" "[ '$(find_next_tadpole)' = '4' ]"
+rm -rf "$TADPOLE_BASE"/.claim-* 2>/dev/null
 
 # Fill the gap
 mkdir -p "$TADPOLE_BASE/$TADPOLE_PREFIX-4"
 run_test "find_next_tadpole finds 6" "[ '$(find_next_tadpole)' = '6' ]"
+rm -rf "$TADPOLE_BASE"/.claim-* 2>/dev/null
 
 # =============================================================================
 # get_branch_name Tests

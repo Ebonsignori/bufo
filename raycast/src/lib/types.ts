@@ -58,3 +58,25 @@ export interface GlobalConfig {
   aliases?: Record<string, string>;
   log_retention_days?: number;
 }
+
+export interface SessionLayout {
+  window_id: string;
+  terminal_sid: string;
+  server_sid: string;
+  main_sid: string;
+  info_sid: string;
+}
+
+export interface BufoSession {
+  name: string;
+  project: string;
+  created: string;
+  last_accessed: string;
+  summary: string;
+  type: "general" | "review" | "court";
+  prs?: string[];
+  // derived at load time:
+  active: boolean;
+  hasReviewOutput: boolean;
+  layout?: SessionLayout;
+}

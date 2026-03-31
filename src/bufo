@@ -31,6 +31,7 @@ source "$LIB/doctor.sh"
 source "$LIB/init.sh"
 source "$LIB/setup.sh"
 source "$LIB/web.sh"
+source "$LIB/raycast.sh"
 source "$LIB/infobar.sh"
 source "$LIB/help.sh"
 
@@ -57,7 +58,7 @@ main() {
 
   # For project-aware commands, resolve project (cwd-first, then default)
   case "${1:-}" in
-    ""|"tp"|"tadpole"|"restart"|"reset"|"refresh"|"continue"|"resume"|"cleanup"|"clean"|"destroy"|"rm"|"remove"|"spawn"|"create"|"wip"|"save"|"config"|"doctor"|"ports"|"shared"|"session"|"review"|"court"|"pr"|"merge"|"ticket"|"tkt"|"lock"|"unlock"|"unlock-all"|"kill"|"switch"|"sw"|"main"|"companions")
+    ""|"tp"|"tadpole"|"restart"|"reset"|"refresh"|"continue"|"resume"|"cleanup"|"clean"|"destroy"|"rm"|"remove"|"spawn"|"create"|"wip"|"save"|"config"|"doctor"|"ports"|"shared"|"session"|"review"|"court"|"chorus"|"pr"|"merge"|"ticket"|"tkt"|"lock"|"unlock"|"unlock-all"|"kill"|"switch"|"sw"|"main"|"companions")
       if [ -z "$PROJECT_ALIAS" ]; then
         if is_legacy_config; then
           check_legacy_migration
@@ -68,7 +69,7 @@ main() {
   esac
 
   case "${1:-}" in
-    "setup-terminal"|"setup"|"init"|"help"|"-h"|"--help"|"cheat"|"--version"|"-v"|"web"|"install"|"_"*) ;;
+    "setup-terminal"|"setup"|"init"|"help"|"-h"|"--help"|"cheat"|"--version"|"-v"|"web"|"raycast"|"install"|"_"*) ;;
     *) check_setup_reminder ;;
   esac
 
@@ -133,6 +134,9 @@ main() {
     "web")
       handle_web_command "${@:2}"
       ;;
+    "raycast")
+      handle_raycast_command "${@:2}"
+      ;;
     "cheat"|"help"|"-h"|"--help")
       if [ "${1:-}" = "cheat" ]; then
         show_cheat
@@ -153,9 +157,9 @@ main() {
       load_config 2>/dev/null || true
       handle_review_command "${@:2}"
       ;;
-    "court")
+    "court"|"chorus")
       load_config 2>/dev/null || true
-      handle_court_command "${@:2}"
+      handle_chorus_command "${@:2}"
       ;;
     "pr")
       # Show usage before requiring a config file
@@ -229,7 +233,17 @@ main() {
     "spawn"|"create")
       load_config
       validate_config
-      create_new_tadpole
+      # Warn if cwd resolved a different project than the default
+      if [ -n "$PROJECT_ALIAS" ] && [ -f "$GLOBAL_CONFIG" ]; then
+        _spawn_default=$(yq -r '.default_project // ""' "$GLOBAL_CONFIG" 2>/dev/null)
+        [ "$_spawn_default" = "null" ] && _spawn_default=""
+        if [ -n "$_spawn_default" ] && [ "$_spawn_default" != "$PROJECT_ALIAS" ]; then
+          warn "Matched @$PROJECT_ALIAS from current directory (default is @$_spawn_default)"
+          echo -e "${YELLOW}  Run 'bufo @$_spawn_default spawn' to target your default project.${NC}"
+          echo ""
+        fi
+      fi
+      create_new_tadpole "$@"
       ;;
     "restart"|"reset"|"refresh")
       load_config
@@ -634,7 +648,7 @@ main() {
       if [ "$latest_version" = "v$current_version" ]; then
         echo -e "${GREEN}Already up to date (v$current_version)${NC}"
         rm -f "$tmp_file" "$tmp_hash"
-        break
+        return
       fi
 
       local base_url="https://github.com/Ebonsignori/bufo/releases/download/${latest_version}"
@@ -776,7 +790,10 @@ main() {
           if is_legacy_config; then
             check_legacy_migration
           fi
-          select_project_interactive "for issue: $1"
+          # Try configured ticket.github_repo first, then fall back to interactive
+          if ! resolve_project_from_ticket_url "$1" 2>/dev/null; then
+            select_project_interactive "for issue: $1"
+          fi
         fi
         load_config
         validate_config
@@ -786,7 +803,10 @@ main() {
           if is_legacy_config; then
             check_legacy_migration
           fi
-          resolve_project_from_cwd 2>/dev/null || resolve_project ""
+          # Try configured ticket.linear_team first, then CWD, then default
+          resolve_project_from_ticket_url "$1" 2>/dev/null \
+            || resolve_project_from_cwd 2>/dev/null \
+            || resolve_project ""
         fi
         load_config
         validate_config

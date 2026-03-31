@@ -17,6 +17,12 @@ declare namespace Preferences {
   export type ListTadpoles = ExtensionPreferences & {}
   /** Preferences accessible in the `new-tadpole` command */
   export type NewTadpole = ExtensionPreferences & {}
+  /** Preferences accessible in the `new-session` command */
+  export type NewSession = ExtensionPreferences & {}
+  /** Preferences accessible in the `list-sessions` command */
+  export type ListSessions = ExtensionPreferences & {}
+  /** Preferences accessible in the `new-main-tadpole` command */
+  export type NewMainTadpole = ExtensionPreferences & {}
 }
 
 declare namespace Arguments {
@@ -24,5 +30,11 @@ declare namespace Arguments {
   export type ListTadpoles = {}
   /** Arguments passed to the `new-tadpole` command */
   export type NewTadpole = {}
+  /** Arguments passed to the `new-session` command */
+  export type NewSession = {}
+  /** Arguments passed to the `list-sessions` command */
+  export type ListSessions = {}
+  /** Arguments passed to the `new-main-tadpole` command */
+  export type NewMainTadpole = {}
 }
 

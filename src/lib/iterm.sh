@@ -132,6 +132,17 @@ iterm_send_text() {
   " 2>/dev/null
 }
 
+# Send text to a session, then send a second bare newline after a short pause.
+# For TUI apps (gemini, codex) that don't treat the PTY newline from
+# "write text" as a submit, the second newline re-triggers their input handler.
+iterm_send_text_and_enter() {
+  local session_id="$1"
+  local text="$2"
+  iterm_send_text "$session_id" "$text"
+  sleep 0.5
+  iterm_send_text "$session_id" ""
+}
+
 # Send Ctrl-C to a specific session
 iterm_send_interrupt() {
   local session_id="$1"

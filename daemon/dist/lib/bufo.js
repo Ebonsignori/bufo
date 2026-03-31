@@ -1,10 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getWorkspaceSubtitle = exports.getWorkspaceTitle = exports.discoverWorkspaces = exports.getWorkspaceDir = void 0;
 exports.getTadpoleDir = getTadpoleDir;
 exports.discoverTadpoles = discoverTadpoles;
 exports.getAllTadpoles = getAllTadpoles;
-exports.getAllWorkspaces = getAllWorkspaces;
 exports.getTadpoleTitle = getTadpoleTitle;
 exports.getTadpoleSubtitle = getTadpoleSubtitle;
 const fs_1 = require("fs");
@@ -15,8 +13,6 @@ const iterm_1 = require("./iterm");
 function getTadpoleDir(project, num) {
     return (0, path_1.join)(project.tadpole_base, `${project.tadpoles.prefix}-${num}`);
 }
-// Legacy alias
-exports.getWorkspaceDir = getTadpoleDir;
 function discoverTadpoles(project, activeSessions) {
     const tadpoles = [];
     for (let i = 1; i <= project.tadpoles.count; i++) {
@@ -47,8 +43,6 @@ function discoverTadpoles(project, activeSessions) {
     }
     return tadpoles;
 }
-// Legacy alias
-exports.discoverWorkspaces = discoverTadpoles;
 function getAllTadpoles() {
     const projects = (0, config_1.discoverProjects)();
     const activeSessions = (0, iterm_1.getActiveSessions)();
@@ -57,11 +51,6 @@ function getAllTadpoles() {
         tadpoles.push(...discoverTadpoles(project, activeSessions));
     }
     return { projects, tadpoles };
-}
-// Legacy alias (also returns tadpoles as workspaces for daemon compatibility)
-function getAllWorkspaces() {
-    const { projects, tadpoles } = getAllTadpoles();
-    return { projects, workspaces: tadpoles };
 }
 function getTadpoleTitle(tp) {
     if (tp.meta?.pr_title) {
@@ -76,15 +65,11 @@ function getTadpoleTitle(tp) {
         return tp.customName;
     return `${tp.project.tadpoles.prefix}-${tp.number}`;
 }
-// Legacy alias
-exports.getWorkspaceTitle = getTadpoleTitle;
 function getTadpoleSubtitle(tp) {
     const parts = [];
     if (tp.branch && tp.branch !== "unknown")
         parts.push(tp.branch);
-    if (tp.meta?.type && tp.meta.type !== "workspace" && tp.meta.type !== "tadpole")
+    if (tp.meta?.type && tp.meta.type !== "tadpole")
         parts.push(tp.meta.type.toUpperCase());
     return parts.join(" | ");
 }
-// Legacy alias
-exports.getWorkspaceSubtitle = getTadpoleSubtitle;

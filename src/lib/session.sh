@@ -161,7 +161,8 @@ session_list() {
 # =============================================================================
 
 # Save session layout pane IDs to layout.json
-# Usage: _save_session_layout <session_dir> <window_id> <terminal> <server> <main> [info]
+# Usage: _save_session_layout <session_dir> <window_id> <terminal> <server> <main> [info] [singer_sids...]
+# singer_sids: additional SIDs for multi-singer chorus layouts (variadic, after info)
 _save_session_layout() {
   local session_dir="$1"
   local window_id="$2"
@@ -169,6 +170,13 @@ _save_session_layout() {
   local server_sid="$4"
   local main_sid="$5"
   local info_sid="${6:-}"
+  shift 6 2>/dev/null || shift $#
+
+  # Remaining args are extra singer SIDs (for chorus layouts)
+  local singer_sids_json="[]"
+  if [ $# -gt 0 ]; then
+    singer_sids_json=$(printf '%s\n' "$@" | jq -R . | jq -s .)
+  fi
 
   jq -n \
     --arg wid "$window_id" \
@@ -176,7 +184,8 @@ _save_session_layout() {
     --arg srv "$server_sid" \
     --arg main "$main_sid" \
     --arg info "$info_sid" \
-    '{window_id: $wid, terminal_sid: $term, server_sid: $srv, main_sid: $main, info_sid: $info}' \
+    --argjson singers "$singer_sids_json" \
+    '{window_id: $wid, terminal_sid: $term, server_sid: $srv, main_sid: $main, info_sid: $info, singer_sids: $singers}' \
     > "$session_dir/layout.json"
 }
 
@@ -195,6 +204,19 @@ _load_session_layout() {
   SESSION_SERVER_SID=$(jq -r '.server_sid // ""' "$layout_file")
   SESSION_MAIN_SID=$(jq -r '.main_sid // ""' "$layout_file")
   SESSION_INFO_SID=$(jq -r '.info_sid // ""' "$layout_file")
+
+  # Load extra singer SIDs (chorus layouts) into SESSION_SINGER_SIDS array
+  SESSION_SINGER_SIDS=()
+  local sv_count
+  sv_count=$(jq -r '(.singer_sids // .reviewer_sids) | length // 0' "$layout_file" 2>/dev/null || echo 0)
+  if [ "$sv_count" -gt 0 ] 2>/dev/null; then
+    local i
+    for (( i=0; i<sv_count; i++ )); do
+      local sid
+      sid=$(jq -r "((.singer_sids // .reviewer_sids)[$i]) // \"\"" "$layout_file")
+      SESSION_SINGER_SIDS+=("$sid")
+    done
+  fi
 
   # Check if main pane is still alive
   if [ -n "$SESSION_MAIN_SID" ] && iterm_session_exists "$SESSION_MAIN_SID"; then
@@ -301,10 +323,6 @@ session_start() {
   session_update "$name" "last_accessed" "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
   local claude_cmd=$(get_ai_interactive_cmd "$name")
-  if [ -f "$context_file" ]; then
-    claude_cmd="$claude_cmd '$context_file'"
-  fi
-
   _open_session_layout "$name" "$session_dir" "$claude_cmd"
 }
 

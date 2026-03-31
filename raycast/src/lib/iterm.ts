@@ -41,6 +41,7 @@ export function focusSession(sessionId: string): void {
                 if (unique ID of s) is "${safeId}" then
                   select t
                   select s
+                  tell w to select
                   return
                 end if
               end repeat

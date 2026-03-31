@@ -24,9 +24,6 @@ install:
 	@echo "Installed bufo to /usr/local/bin/"
 
 lint:
-	@if command -v shellcheck &>/dev/null; then \
-		shellcheck src/bufo src/lib/*.sh; \
-		echo "Lint passed"; \
-	else \
-		echo "shellcheck not installed, skipping lint"; \
-	fi
+	@command -v shellcheck &>/dev/null || { echo "Error: shellcheck not installed. Run: brew install shellcheck"; exit 1; }
+	@shellcheck src/bufo src/lib/*.sh
+	@echo "Lint passed"

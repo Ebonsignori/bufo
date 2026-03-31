@@ -103,6 +103,82 @@ resolve_project_from_github_url() {
   return 1
 }
 
+# Try to auto-resolve a project from a Linear or GitHub Issue URL
+# using ticket.linear_team or ticket.github_repo in each project's config.
+#
+# Returns 0 and sets CONFIG_FILE/PROJECT_ALIAS on a unique match.
+# Returns 0 (with a warning + interactive fallback) on conflict.
+# Returns 1 if no project has the relevant config fields set.
+resolve_project_from_ticket_url() {
+  local url="$1"
+
+  [ ! -d "$PROJECTS_DIR" ] && return 1
+
+  local is_linear=false
+  local match_value=""
+
+  # Determine URL type and extract the matchable token
+  if [[ "$url" =~ ^https://linear\.app/([^/]+)/ ]]; then
+    is_linear=true
+    match_value="${BASH_REMATCH[1]}"   # e.g. "myteam"
+  elif [[ "$url" =~ ^https://github\.com/([^/]+/[^/]+)/issues/ ]]; then
+    match_value="${BASH_REMATCH[1]%.git}"   # e.g. "owner/repo"
+  fi
+
+  # URL type not matched — bail early
+  [ -z "$match_value" ] && return 1
+
+  local -a matched_aliases=()
+  local -a matched_files=()
+
+  for f in "$PROJECTS_DIR"/*.yaml; do
+    [ -f "$f" ] || continue
+
+    local configured_value=""
+    if [ "$is_linear" = true ]; then
+      configured_value=$(yq -r '.ticket.linear_team // ""' "$f" 2>/dev/null)
+    else
+      configured_value=$(yq -r '.ticket.github_repo // ""' "$f" 2>/dev/null)
+    fi
+    [ -z "$configured_value" ] || [ "$configured_value" = "null" ] && continue
+
+    # Normalize: strip trailing .git
+    configured_value="${configured_value%.git}"
+
+    if [ "$configured_value" = "$match_value" ]; then
+      matched_aliases+=("$(basename "$f" .yaml)")
+      matched_files+=("$f")
+    fi
+  done
+
+  # No project has this field configured → let caller fall through
+  [ ${#matched_aliases[@]} -eq 0 ] && return 1
+
+  # Exactly one match → auto-resolve silently
+  if [ ${#matched_aliases[@]} -eq 1 ]; then
+    CONFIG_FILE="${matched_files[0]}"
+    PROJECT_ALIAS="${matched_aliases[0]}"
+    reset_config
+    return 0
+  fi
+
+  # Multiple matches → warn + interactive picker
+  local conflict_label
+  if [ "$is_linear" = true ]; then
+    conflict_label="Linear team '$match_value'"
+  else
+    conflict_label="GitHub repo '$match_value'"
+  fi
+
+  warn "Multiple projects claim $conflict_label:"
+  for a in "${matched_aliases[@]}"; do
+    echo -e "  ${YELLOW}@$a${NC}"
+  done
+  echo ""
+  select_project_interactive "for $conflict_label"
+  return 0
+}
+
 # Try to resolve the correct project from the current working directory
 resolve_project_from_cwd() {
   local cwd=$(pwd)
@@ -220,6 +296,11 @@ show_projects() {
 
   if [ "$subcmd" = "rm" ] || [ "$subcmd" = "remove" ] || [ "$subcmd" = "delete" ]; then
     remove_project "${2:-}"
+    return
+  fi
+
+  if [ "$subcmd" = "default" ]; then
+    set_default_project "${2:-}"
     return
   fi
 
@@ -416,18 +497,43 @@ set_default_project() {
   local alias="${1:-}"
 
   if [ -z "$alias" ]; then
+    if [ ! -d "$PROJECTS_DIR" ] || [ -z "$(ls -A "$PROJECTS_DIR" 2>/dev/null)" ]; then
+      echo "No projects registered. Run 'bufo init' to register a project."
+      return
+    fi
+
     local current=""
     if [ -f "$GLOBAL_CONFIG" ]; then
       current=$(yq -r '.default_project // ""' "$GLOBAL_CONFIG" 2>/dev/null)
       [ "$current" = "null" ] && current=""
     fi
-    if [ -n "$current" ]; then
-      echo -e "Default project: ${BOLD}@$current${NC}"
-    else
-      echo "No default project set."
-      echo "Usage: bufo default <alias>"
+
+    echo -e "${CYAN}Set Default Project${NC}"
+    echo ""
+
+    local -a aliases=()
+    for f in "$PROJECTS_DIR"/*.yaml; do
+      aliases+=("$(basename "$f" .yaml)")
+    done
+
+    local i=1
+    for a in "${aliases[@]}"; do
+      local marker=""
+      [ "$a" = "$current" ] && marker=" ${YELLOW}(current)${NC}"
+      echo -e "  ${BOLD}$i)${NC} @$a${marker}"
+      (( i++ ))
+    done
+
+    echo ""
+    printf "Select project [1-%d]: " "${#aliases[@]}"
+    read -r selection
+
+    if ! [[ "$selection" =~ ^[0-9]+$ ]] || [ "$selection" -lt 1 ] || [ "$selection" -gt "${#aliases[@]}" ]; then
+      error "Invalid selection."
+      return 1
     fi
-    return
+
+    alias="${aliases[$((selection - 1))]}"
   fi
 
   alias="${alias#@}"

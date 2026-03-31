@@ -33,7 +33,6 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isWorkspaceLocked = exports.loadWorkspaceMeta = exports.loadWorkspaceState = void 0;
 exports.getBufoDir = getBufoDir;
 exports.bufoExists = bufoExists;
 exports.loadGlobalConfig = loadGlobalConfig;
@@ -131,8 +130,6 @@ function loadTadpoleState(sessionName, num) {
         return undefined;
     }
 }
-// Legacy alias
-exports.loadWorkspaceState = loadTadpoleState;
 function loadTadpoleMeta(tadpoleDir) {
     const metaFile = (0, path_1.join)(tadpoleDir, ".bufo-meta");
     if (!(0, fs_1.existsSync)(metaFile))
@@ -144,13 +141,9 @@ function loadTadpoleMeta(tadpoleDir) {
         return undefined;
     }
 }
-// Legacy alias
-exports.loadWorkspaceMeta = loadTadpoleMeta;
 function isTadpoleLocked(tadpoleDir) {
     return (0, fs_1.existsSync)((0, path_1.join)(tadpoleDir, ".bufo-lock"));
 }
-// Legacy alias
-exports.isWorkspaceLocked = isTadpoleLocked;
 function getCustomName(tadpoleDir) {
     const nameFile = (0, path_1.join)(tadpoleDir, ".bufo-name");
     if (!(0, fs_1.existsSync)(nameFile))

@@ -16,7 +16,7 @@ Bufo is a macOS iTerm2 workspace manager for parallel AI-assisted development. I
 | New iTerm2 operation | `src/lib/iterm.sh` only — never call `osascript` elsewhere |
 | New TS type | `raycast/src/lib/types.ts` |
 | New config reader | `raycast/src/lib/config.ts` |
-| New Raycast command | `raycast/src/<name>.tsx` + entry in `raycast/package.json` commands array |
+| New Raycast command | `raycast/src/<name>.tsx` + entry in `raycast/package.json` commands array + `cd raycast && npm run build` + `bufo raycast install` |
 | New daemon WebSocket message | `daemon/src/server.ts` |
 
 ### Commands
@@ -24,9 +24,11 @@ Bufo is a macOS iTerm2 workspace manager for parallel AI-assisted development. I
 ```bash
 make test                        # Run bash test suite (no iTerm2 needed)
 make lint                        # shellcheck all bash files
-./install.sh                     # Install locally from this checkout
+./install.sh                     # Install locally (only needed once — ~/.local/bin/bufo and lib/ are symlinked to src/, so edits are live immediately)
 cd daemon && npm run build       # Compile TypeScript → dist/
 bufo web restart                 # Reload daemon after build
+cd raycast && npm run build       # Build Raycast extension → dist-install/
+bufo raycast install             # Copy dist-install/ → ~/.config/raycast/extensions/bufo/ (run after every build)
 cd raycast && npm run dev        # Raycast hot-reload dev mode
 gh workflow run release.yml -f version=x.y.z  # Release (no leading v)
 ```

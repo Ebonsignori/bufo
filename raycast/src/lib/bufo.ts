@@ -1,4 +1,4 @@
-import { existsSync } from "fs";
+import { existsSync, readdirSync } from "fs";
 import { join } from "path";
 import type { BufoProject, BufoTadpole } from "./types";
 import {
@@ -18,9 +18,21 @@ export function getTadpoleDir(project: BufoProject, num: number): string {
 export function discoverTadpoles(project: BufoProject, activeSessions?: Set<string>): BufoTadpole[] {
   const tadpoles: BufoTadpole[] = [];
 
-  for (let i = 1; i <= project.tadpoles.count; i++) {
+  // Discover by scanning the tadpole_base directory for <prefix>-<N> dirs,
+  // rather than iterating 1..count. `count` controls how many to *create*,
+  // not a ceiling on how many can exist.
+  if (!existsSync(project.tadpole_base)) return tadpoles;
+
+  const prefix = project.tadpoles.prefix;
+  const entries = readdirSync(project.tadpole_base, { withFileTypes: true });
+  const nums: number[] = entries
+    .filter((e) => e.isDirectory() && e.name.startsWith(`${prefix}-`))
+    .map((e) => parseInt(e.name.slice(prefix.length + 1), 10))
+    .filter((n) => !isNaN(n))
+    .sort((a, b) => a - b);
+
+  for (const i of nums) {
     const dir = getTadpoleDir(project, i);
-    if (!existsSync(dir)) continue;
 
     const state = loadTadpoleState(project.session_name, i);
     const meta = loadTadpoleMeta(dir);

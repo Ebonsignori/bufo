@@ -29,6 +29,7 @@ src/
     doctor.sh             # Diagnostic checks
     init.sh               # Project registration, templates, config scan
     setup.sh              # iTerm2 setup (keybindings, logging, web plist); check_setup_reminder
+    raycast.sh            # Raycast extension install/dev commands
     help.sh               # Help text and cheat sheet
 install.sh            # Bootstrap installer — also copied to ~/.local/bin/install.sh for 'bufo install'
 daemon/                   # Mobile web daemon (Node.js/TypeScript) — see daemon/AGENTS.md
@@ -217,7 +218,7 @@ make help   # shows: gh workflow run release.yml -f version=x.y.z
 
 # With a configured project
 ./src/bufo init          # Register a project
-./src/bufo tp 1          # Open tadpole 1
+./src/bufo spawn         # Create your first tadpole
 ```
 
 ### Installing locally

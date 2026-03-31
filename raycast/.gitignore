@@ -1,2 +1,3 @@
 node_modules/
 .build/
+# dist-install/ is intentionally tracked — it's the pre-built release artifact for `bufo raycast install`

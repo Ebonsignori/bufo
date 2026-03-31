@@ -59,6 +59,28 @@ config_exists() {
 validate_config() {
   local errors=0
 
+  # If no project was resolved and CONFIG_FILE still points at the global
+  # config, the user ran a project command without a project context.
+  if [ -z "${PROJECT_ALIAS:-}" ] && [ "$CONFIG_FILE" = "$GLOBAL_CONFIG" ]; then
+    local project_count=0
+    if [ -d "$PROJECTS_DIR" ]; then
+      project_count=$(ls -1 "$PROJECTS_DIR"/*.yaml 2>/dev/null | wc -l | tr -d ' ')
+    fi
+    if [ "$project_count" -eq 0 ]; then
+      error "No projects registered."
+      echo "Run 'bufo init' to register your first project."
+    else
+      error "Multiple projects found — specify one with @alias:"
+      for f in "$PROJECTS_DIR"/*.yaml; do
+        [ -f "$f" ] || continue
+        echo "  bufo @$(basename "$f" .yaml) spawn"
+      done
+      echo ""
+      echo "Or set a default: bufo default <alias>"
+    fi
+    exit 1
+  fi
+
   if ! config_exists; then
     if [ -n "${PROJECT_ALIAS:-}" ]; then
       error "Config not found for project @$PROJECT_ALIAS at $CONFIG_FILE"
@@ -259,7 +281,7 @@ get_ai_tool() {
 
 # Get the interactive AI command (for the main pane)
 # Usage: get_ai_interactive_cmd [session_name]
-# Returns e.g. "claude --dangerously-skip-permissions --chrome --name 'foo'" or "codex --full-auto"
+# Returns e.g. "claude --dangerously-skip-permissions --name 'foo'" or "codex --full-auto"
 get_ai_interactive_cmd() {
   local session_name="${1:-}"
   local tool=$(get_ai_tool)
@@ -274,7 +296,7 @@ get_ai_interactive_cmd() {
       echo "gemini --yolo"
       ;;
     *)
-      local cmd="claude --dangerously-skip-permissions --chrome"
+      local cmd="claude --dangerously-skip-permissions"
       if [ -n "$session_name" ]; then
         cmd="$cmd --name $(printf '%q' "$session_name")"
       fi

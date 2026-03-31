@@ -9,7 +9,32 @@ on:
         type: string
 
 jobs:
+  build-raycast:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Raycast extension
+        run: |
+          cd raycast
+          npm ci
+          npx ray build -o dist-release --non-interactive
+          cd ..
+          tar -czf bufo-raycast.tar.gz -C raycast/dist-release .
+
+      - name: Upload Raycast asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: bufo-raycast
+          path: bufo-raycast.tar.gz
+
   release:
+    needs: build-raycast
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -70,6 +95,14 @@ jobs:
           sha256sum bufo-daemon.tar.gz > bufo-daemon.tar.gz.sha256
           sha256sum install.sh > install.sh.sha256
 
+      - name: Download Raycast asset
+        uses: actions/download-artifact@v4
+        with:
+          name: bufo-raycast
+
+      - name: Checksum Raycast asset
+        run: sha256sum bufo-raycast.tar.gz > bufo-raycast.tar.gz.sha256
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -83,4 +116,6 @@ jobs:
             bufo-lib.tar.gz.sha256
             bufo-daemon.tar.gz
             bufo-daemon.tar.gz.sha256
+            bufo-raycast.tar.gz
+            bufo-raycast.tar.gz.sha256
           generate_release_notes: true

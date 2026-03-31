@@ -13,12 +13,16 @@ raycast/
   src/
     list-tadpoles.tsx    # Command: browse all tadpoles across projects
     new-tadpole.tsx      # Command: create a tadpole from a ticket, PR, or slot number
+    list-sessions.tsx    # Command: browse all sessions across projects
+    new-session.tsx      # Command: start a new named session
+    new-main-tadpole.tsx # Command: open the main repo checkout (no worktree)
     lib/                 # Shared library (symlinked into daemon/src/lib/)
-      types.ts           # BufoProject, BufoTadpole, TadpoleState, TadpoleMeta, GlobalConfig
-      config.ts          # Config + state readers (no shell — pure fs/yaml)
+      types.ts           # BufoProject, BufoTadpole, TadpoleState, TadpoleMeta, BufoSession, SessionLayout, GlobalConfig
+      config.ts          # Config + state readers (no shell — pure fs/yaml); includes session discovery
       bufo.ts            # Tadpole discovery + display helpers
       exec.ts            # bufo CLI runner + git branch helper
       iterm.ts           # iTerm2 AppleScript helpers (focusSession, getActiveSessions)
+  dist-install/          # Pre-built .js bundles committed to repo — used by `bufo raycast install`
   package.json           # Raycast extension manifest + dependencies
 ```
 
@@ -28,6 +32,9 @@ raycast/
 |---|---|---|
 | `list-tadpoles.tsx` | List Tadpoles | Shows all tadpoles grouped by project; focus, open, lock/unlock, copy branch, cleanup, destroy |
 | `new-tadpole.tsx` | New Tadpole | Form to create a tadpole from a ticket/PR URL or slot number (`bufo @alias ticket` / `bufo @alias pr` / `bufo @alias tp N`) |
+| `list-sessions.tsx` | List Sessions | Shows all sessions grouped by project; focus, resume, copy name, delete |
+| `new-session.tsx` | New Session | Form to start a new named session (`bufo @alias session start <name>`) |
+| `new-main-tadpole.tsx` | New Main Tadpole | Form to open the main repo checkout directly — no worktree (`bufo @alias main`) |
 
 ### Data Flow
 
@@ -56,10 +63,10 @@ Command renders
 
 | File | Key exports |
 |------|------------|
-| `types.ts` | `BufoProject`, `BufoTadpole`, `TadpoleState`, `TadpoleMeta`, `GlobalConfig` |
-| `config.ts` | `discoverProjects()`, `loadProject()`, `loadGlobalConfig()`, `loadTadpoleState()`, `loadTadpoleMeta()`, `isTadpoleLocked()`, `getCustomName()`, `bufoExists()` |
+| `types.ts` | `BufoProject`, `BufoTadpole`, `TadpoleState`, `TadpoleMeta`, `BufoSession`, `SessionLayout`, `GlobalConfig` |
+| `config.ts` | `discoverProjects()`, `loadProject()`, `loadGlobalConfig()`, `loadTadpoleState()`, `loadTadpoleMeta()`, `isTadpoleLocked()`, `getCustomName()`, `bufoExists()`, `loadSession()`, `discoverSessions()`, `getAllSessions()` |
 | `bufo.ts` | `getAllTadpoles()`, `discoverTadpoles()`, `getTadpoleTitle()`, `getTadpoleSubtitle()` |
-| `exec.ts` | `runBufoAsync()`, `runBufoSync()`, `getGitBranch()` |
+| `exec.ts` | `runBufoAsync(args, stdin?)`, `runBufoSync()`, `getGitBranch()` |
 | `iterm.ts` | `getActiveSessions()`, `focusSession()`, `isItermRunning()` |
 
 ### `bufo` Binary Resolution (`exec.ts`)
@@ -97,18 +104,33 @@ cd raycast
 
 npm install       # install dependencies
 npm run dev       # ray develop — registers commands in Raycast with hot-reload
-npm run build     # ray build — production build (e.g. before store submission)
+npm run build     # ray build — compile to ~/.config/raycast/extensions/bufo/
 npm run lint      # ray lint (eslint + prettier)
 npm run fix-lint  # ray lint --fix
 ```
 
-### Running the Extension
+To build the pre-built `dist-install/` artifact (committed to the repo for `bufo raycast install`):
 
-Run `npm run dev` — this registers all commands in Raycast and keeps them available as long as the process is running. There is no "import from filesystem" option for non-store extensions.
+```bash
+cd raycast
+npx ray build -o dist-install --non-interactive
+```
 
-Alternatives if a persistent background process is undesirable:
-- **Raycast Teams (Pro)** — share private extensions without publishing publicly
-- **Publish to the store** — requires a review process, makes it public
+Run this after adding or modifying commands so the committed artifact stays up to date.
+
+### Installing the Extension
+
+For end users (no npm required):
+```bash
+bufo raycast install   # copies dist-install/ to ~/.config/raycast/extensions/bufo/
+```
+
+For development (hot-reload, requires npm + ray CLI):
+```bash
+bufo raycast dev       # wraps npm run dev
+```
+
+The installer (`./install.sh`) prompts to run `bufo raycast install` automatically during setup.
 
 ### Adding a New Command
 
@@ -124,6 +146,10 @@ Alternatives if a persistent background process is undesirable:
    ```
 3. Use `useCachedPromise` from `@raycast/utils` for async data — it handles loading states and caches between invocations
 4. For mutations, call `runBufoAsync(args)` and show progress/result with `showToast`
+5. Rebuild `dist-install/` so the committed artifact reflects the new command:
+   ```bash
+   npx ray build -o dist-install --non-interactive
+   ```
 
 ### Adding a lib Function
 
@@ -151,5 +177,10 @@ After changes, verify:
 - [ ] `npm run dev` registers commands in Raycast without errors
 - [ ] **List Tadpoles** shows projects and tadpoles; active ones have green dot
 - [ ] **New Tadpole** form submits and creates a tadpole via `bufo`
+- [ ] **List Sessions** shows sessions grouped by project; active ones have green dot
+- [ ] **New Session** form submits and starts a session via `bufo`
+- [ ] **New Main Tadpole** form submits and opens main repo via `bufo`
+- [ ] `bufo raycast install` copies files cleanly and extension appears in Raycast (not under Development tab)
 - [ ] No `@raycast/api` imports inside `src/lib/` files
 - [ ] `daemon/src/lib/` symlink still resolves correctly after any `lib/` file additions
+- [ ] `dist-install/` rebuilt and committed if commands or lib files changed

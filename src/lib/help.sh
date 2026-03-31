@@ -92,6 +92,23 @@ show_cheat() {
 |                                                                               |
 +===============================================================================+
 |                                                                               |
+|  CHORUS COMMANDS (bufo chorus ...)                                            |
+|  ────────────────────────────────────────────────────────────────────────     |
+|  bufo chorus init          Configure conductor + singers (1–3 AI tools)       |
+|  bufo chorus <PR>          Multi-agent chorus review for a PR                 |
+|  bufo chorus new           Interactive mode (multiple PRs + context)          |
+|  bufo chorus ls            List chorus sessions                               |
+|  bufo chorus resume <name> Resume a chorus session                            |
+|  bufo chorus show <name>   View saved verdict                                 |
+|  bufo chorus apply [name]  Apply findings to a PR tadpole for fixing          |
+|  bufo chorus delete <name> Delete a chorus session                            |
+|                                                                               |
+|  Conductor orchestrates; singers run in separate panes, save findings to      |
+|  singer-<N>-review.md; conductor delivers a verified final verdict.           |
+|  Configure tools: bufo chorus init  (claude/codex/gemini/copilot)             |
+|                                                                               |
++===============================================================================+
+|                                                                               |
 |  PR COMMANDS (bufo pr ...)                                                    |
 |  ────────────────────────────────────────────────────────────────────────     |
 |  bufo pr <PR>              Create/reopen tadpole for a GitHub PR            |
@@ -177,6 +194,8 @@ show_cheat() {
 |  bufo web open         Open mobile web UI in browser                          |
 |  bufo web start/stop/restart  Manage the web daemon                          |
 |  bufo web log          Tail the daemon log                                    |
+|  bufo raycast install  Install the Raycast extension                          |
+|  bufo raycast dev      Start extension with hot-reload (requires npm)         |
 |  bufo update           Update bufo to latest version                      |
 |  bufo install         Re-run installer (iTerm2 setup, deps, files)        |
 |  bufo cheat            Show this cheat sheet                                  |
@@ -237,6 +256,16 @@ show_help() {
   echo "  review ls         List review sessions"
   echo "  review resume     Resume a review"
   echo ""
+  echo "Chorus Commands (multi-agent chorus review):"
+  echo "  chorus init        Configure conductor + singers (run once per project)"
+  echo "  chorus <PR>        Chorus review (conductor + 1-3 configured AI singers)"
+  echo "  chorus new         Interactive mode (multiple PRs + context)"
+  echo "  chorus ls          List chorus sessions"
+  echo "  chorus resume      Resume a chorus session"
+  echo "  chorus show        View saved verdict"
+  echo "  chorus apply       Apply findings to a PR tadpole (auto-detects latest)"
+  echo "  chorus delete      Delete a chorus session"
+  echo ""
   echo "PR Commands:"
   echo "  pr <PR>           Create/reopen tadpole for a GitHub PR"
   echo "  tp <N> pr <PR>    Use specific tadpole for PR"
@@ -289,6 +318,8 @@ show_help() {
   echo "  web open          Open web UI in browser"
   echo "  web start/stop/restart  Manage the web daemon"
   echo "  web log           Tail daemon log"
+  echo "  raycast install   Install the Raycast extension"
+  echo "  raycast dev       Start Raycast extension in dev/hot-reload mode"
   echo "  update            Update bufo to latest version"
   echo "  install           Re-run installer (iTerm2 setup, deps, files)"
   echo "  cheat             Show cheat sheet"

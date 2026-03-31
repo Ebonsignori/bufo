@@ -164,8 +164,8 @@ function handleRequest(req: http.IncomingMessage, res: http.ServerResponse): voi
 
   const data = entry.cache();
   if (data === null) {
-    res.writeHead(503, { "Content-Type": "text/plain" });
-    res.end("Asset not built — run `npm run build` in the daemon directory");
+    res.writeHead(503, { "Content-Type": "text/plain; charset=utf-8" });
+    res.end("Web UI assets are missing. Re-run the bufo installer with: bufo install");
     return;
   }
 

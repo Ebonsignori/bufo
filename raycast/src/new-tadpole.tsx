@@ -22,7 +22,7 @@ export default function NewTadpole() {
         <ActionPanel>
           <Action.SubmitForm
             title="Create Tadpole"
-            onSubmit={async (values: { project: string; source: string; number: string }) => {
+            onSubmit={async (values: { project: string; source: string; number: string; reuse: boolean }) => {
               setIsSubmitting(true);
               try {
                 let cmd: string;
@@ -36,7 +36,7 @@ export default function NewTadpole() {
                 } else if (values.number) {
                   cmd = `@${values.project} tp ${values.number}`;
                 } else {
-                  cmd = `@${values.project} spawn`;
+                  cmd = `@${values.project} spawn${values.reuse ? " --reuse" : ""}`;
                 }
 
                 await showToast({ style: Toast.Style.Animated, title: "Creating tadpole..." });
@@ -73,6 +73,12 @@ export default function NewTadpole() {
         title="Tadpole Number"
         placeholder="Leave blank to auto detect next free"
         info="The specific tadpole slot to use. Leave blank to automatically use the next available."
+      />
+      <Form.Checkbox
+        id="reuse"
+        label="Reuse unlocked tadpole if available"
+        defaultValue={false}
+        info="Resets an existing unlocked tadpole to latest main instead of creating a new worktree. Much faster when a cleaned-up tadpole is available."
       />
     </Form>
   );

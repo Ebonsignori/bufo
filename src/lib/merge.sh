@@ -4,9 +4,22 @@
 # Return the name of the default (trunk) branch for the given repo path.
 # Falls back to "main" if origin/HEAD is not configured.
 _get_default_branch() {
-  git -C "${1:-.}" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null \
-    | sed 's|refs/remotes/origin/||' \
-    || echo "main"
+  local dir="${1:-.}"
+  # Try symbolic-ref first (set when origin/HEAD is configured)
+  local branch
+  branch=$(git -C "$dir" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
+  if [ -n "$branch" ]; then
+    echo "$branch"
+    return
+  fi
+  # Fall back to inferring from remote branches
+  for candidate in main master develop; do
+    if git -C "$dir" show-ref --verify --quiet "refs/remotes/origin/$candidate" 2>/dev/null; then
+      echo "$candidate"
+      return
+    fi
+  done
+  echo "main"
 }
 
 _merge_usage() {

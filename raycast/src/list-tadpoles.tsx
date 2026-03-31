@@ -9,6 +9,7 @@ import {
   Toast,
   confirmAlert,
   Alert,
+  closeMainWindow,
 } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
 import { getAllTadpoles, getTadpoleTitle, getTadpoleSubtitle } from "./lib/bufo";
@@ -103,12 +104,23 @@ function TadpoleItem({ tp, revalidate }: { tp: BufoTadpole; revalidate: () => vo
     ? { source: Icon.Terminal, tintColor: Color.Green }
     : { source: Icon.Terminal, tintColor: Color.SecondaryText };
 
+  const keywords = [
+    tp.project.alias,
+    tp.project.session_name,
+    tp.branch,
+    tp.meta?.ticket,
+    tp.meta?.pr_title,
+    tp.meta?.name,
+    tp.customName,
+  ].filter((k): k is string => !!k);
+
   return (
     <List.Item
       title={title}
       subtitle={subtitle}
       icon={icon}
       accessories={accessories}
+      keywords={keywords}
       actions={
         <ActionPanel>
           <ActionPanel.Section>
@@ -116,8 +128,9 @@ function TadpoleItem({ tp, revalidate }: { tp: BufoTadpole; revalidate: () => vo
               <Action
                 title="Focus Tadpole"
                 icon={Icon.Eye}
-                onAction={() => {
+                onAction={async () => {
                   focusSession(tp.state!.panes.terminal);
+                  await closeMainWindow();
                 }}
               />
             )}
