@@ -23,6 +23,12 @@ Thumbs.db
 .vscode/
 
 # Test artifacts
+# Node
+node_modules/
+
+# Build output
+packages/*/dist/
+
 test-output/
 coverage/
 
