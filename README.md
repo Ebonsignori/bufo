@@ -49,6 +49,23 @@ If you have the repo cloned locally, you can also run the installer directly —
 ./install.sh
 ```
 
+### TypeScript CLI
+
+Bufo is being migrated to TypeScript. The new `bufo-ts` binary is available alongside the original bash CLI:
+
+```bash
+# Build the TypeScript packages
+make build
+
+# Run via the TS entry point directly
+npx bufo-ts --version
+
+# Or via node
+node packages/cli/dist/index.js --version
+```
+
+Both `bufo` (bash) and `bufo-ts` (TypeScript) are available during the migration. The TypeScript version will eventually replace the bash CLI entirely.
+
 ## Quick Start
 
 ```bash
@@ -67,6 +84,8 @@ bufo
 # Restart current tadpole
 bufo restart
 ```
+
+> **Note:** The TypeScript CLI (`bufo-ts`) supports a subset of commands and is under active development. Use `bufo` (bash) for full functionality.
 
 ## Quick Open
 
