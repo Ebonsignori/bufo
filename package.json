@@ -1,0 +1,10 @@
+{
+  "name": "bufo",
+  "private": true,
+  "workspaces": ["packages/*", "daemon", "raycast"],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test:ts": "npm run test --workspace=packages/core",
+    "test:bash": "make test"
+  }
+}
