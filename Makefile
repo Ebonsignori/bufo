@@ -1,4 +1,4 @@
-.PHONY: test test-bash test-ts install lint help
+.PHONY: test test-bash test-ts install lint build help
 
 help:
 	@echo "Bufo Makefile"
@@ -7,8 +7,9 @@ help:
 	@echo "  make test        Run all tests (bash + TypeScript)"
 	@echo "  make test-bash   Run bash unit tests only"
 	@echo "  make test-ts     Run TypeScript unit tests only"
+	@echo "  make build       Build all workspaces"
 	@echo "  make install     Install bufo to /usr/local/bin"
-	@echo "  make lint        Run shellcheck"
+	@echo "  make lint        Run shellcheck + tsc type checks"
 	@echo ""
 	@echo "Releasing:"
 	@echo "  gh workflow run release.yml -f version=x.y.z"
@@ -21,7 +22,11 @@ test-bash:
 	@./tests/run.sh
 
 test-ts:
-	@npm test --workspace=packages/core --workspace=packages/cli
+	npm run test --workspace=packages/core
+	npm run test --workspace=packages/cli
+
+build:
+	npm run build --workspaces --if-present
 
 install:
 	@chmod +x src/bufo
@@ -32,5 +37,6 @@ install:
 
 lint:
 	@command -v shellcheck &>/dev/null || { echo "Error: shellcheck not installed. Run: brew install shellcheck"; exit 1; }
-	@shellcheck src/bufo src/lib/*.sh
-	@echo "Lint passed"
+	shellcheck src/bufo src/lib/*.sh
+	cd packages/core && npx tsc --noEmit
+	cd packages/cli && npx tsc --noEmit
