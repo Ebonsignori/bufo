@@ -42,6 +42,7 @@
     }
   ],
   "dependencies": {
+    "@bufo/core": "*",
     "@raycast/api": "^1.104.11",
     "@raycast/utils": "^2.2.3",
     "js-yaml": "^4.1.0"
