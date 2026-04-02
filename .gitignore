@@ -26,3 +26,6 @@ Thumbs.db
 test-output/
 coverage/
 
+
+# Migration worktrees (auto-added by scripts/migrate.ts)
+.claude/migrate-worktrees/
