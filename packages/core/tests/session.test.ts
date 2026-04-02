@@ -5,15 +5,18 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import * as yaml from 'js-yaml';
 
-let tempDir: string;
+const hoisted = vi.hoisted(() => ({ tempDir: '' }));
 
 vi.mock('node:os', async () => {
   const actual = await vi.importActual<typeof import('node:os')>('node:os');
   return {
     ...actual,
-    homedir: () => tempDir,
+    homedir: () => hoisted.tempDir,
   };
 });
+
+// Keep `tempDir` as a local alias for readability in tests
+let tempDir: string;
 
 import {
   getSessionsDir,
@@ -44,6 +47,7 @@ function makeProject(overrides: Partial<BufoProject> = {}): BufoProject {
 describe('session data layer', () => {
   beforeEach(async () => {
     tempDir = await mkdtemp(join(tmpdir(), 'bufo-session-test-'));
+    hoisted.tempDir = tempDir;
   });
 
   afterEach(async () => {

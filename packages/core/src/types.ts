@@ -15,6 +15,11 @@ export interface BufoProject {
   layout?: {
     panes?: Array<{ name: string; command: string }> | undefined;
   } | undefined;
+  ticket?: {
+    linear_team?: string | undefined;
+    linear_base_url?: string | undefined;
+    github_repo?: string | undefined;
+  } | undefined;
   /** Absolute path to the YAML config file that defined this project. */
   config_file?: string | undefined;
 }

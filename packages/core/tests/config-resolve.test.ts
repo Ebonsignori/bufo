@@ -5,11 +5,13 @@ import { join } from 'node:path';
 
 let tempDir: string;
 
+const hoisted = vi.hoisted(() => ({ tempDir: '' }));
+
 vi.mock('node:os', async () => {
   const actual = await vi.importActual<typeof import('node:os')>('node:os');
   return {
     ...actual,
-    homedir: () => tempDir,
+    homedir: () => hoisted.tempDir,
   };
 });
 
@@ -52,6 +54,7 @@ function makeProjectYaml(opts: {
 describe('project resolution', () => {
   beforeEach(async () => {
     tempDir = await mkdtemp(join(tmpdir(), 'bufo-config-test-'));
+    hoisted.tempDir = tempDir;
     await mkdir(join(tempDir, '.bufo', 'projects'), { recursive: true });
   });
 

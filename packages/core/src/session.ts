@@ -1,22 +1,20 @@
 import { mkdir, writeFile, readFile, rm, readdir, stat, access } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import * as yaml from 'js-yaml';
 import type { BufoProject, BufoSession, SessionLayout } from './types.js';
-import { loadSession, discoverSessions } from './config.js';
-
-const BUFO_DIR = join(homedir(), '.bufo');
-const SESSIONS_DIR = join(BUFO_DIR, 'sessions');
 
 // ---------------------------------------------------------------------------
-// Path helpers
+// Path helpers — use functions so homedir() is resolved lazily (testable)
 // ---------------------------------------------------------------------------
 
-/**
- * Returns the on-disk directory for a named session (sync, no I/O).
- */
+export function getSessionsDir(project: BufoProject): string {
+  return join(homedir(), '.bufo', 'sessions', project.alias);
+}
+
 export function getSessionDir(project: BufoProject, name: string): string {
-  return join(SESSIONS_DIR, project.alias, name);
+  return join(getSessionsDir(project), name);
 }
 
 // ---------------------------------------------------------------------------
@@ -25,7 +23,7 @@ export function getSessionDir(project: BufoProject, name: string): string {
 
 /**
  * Create a new session directory + session.yaml, optionally writing context.md.
- * Returns the session directory path (mirrors bash session_create output).
+ * Returns the session directory path.
  */
 export async function createSession(
   project: BufoProject,
@@ -34,12 +32,10 @@ export async function createSession(
 ): Promise<string> {
   const sessionDir = getSessionDir(project, name);
 
-  // Fail loudly if it already exists — mirrors bash behaviour
+  // Fail loudly if it already exists
   try {
     await access(sessionDir);
-    throw new Error(
-      `Session '${name}' already exists. Use 'bufo session resume ${name}' to continue it.`,
-    );
+    throw new Error(`Session '${name}' already exists`);
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
   }
@@ -67,7 +63,6 @@ export async function createSession(
 
 /**
  * Update a single field in a session's session.yaml.
- * Mirrors bash session_update: rewrites the field via yaml round-trip.
  */
 export async function updateSession(
   project: BufoProject,
@@ -88,39 +83,90 @@ export async function updateSession(
 }
 
 /**
- * Load a session by project + name. Returns null if not found.
+ * Get a single field value from a session's session.yaml.
+ * Returns null if session or field not found.
  */
 export async function getSession(
   project: BufoProject,
   name: string,
-): Promise<BufoSession | null> {
-  return loadSession(project.alias, name) ?? null;
+  field: string,
+): Promise<string | null> {
+  const sessionFile = join(getSessionDir(project, name), 'session.yaml');
+  let raw: string;
+  try {
+    raw = await readFile(sessionFile, 'utf-8');
+  } catch {
+    return null;
+  }
+  const doc = (yaml.load(raw) as Record<string, unknown>) ?? {};
+  const val = doc[field];
+  if (val === undefined || val === null) return null;
+  return String(val);
 }
 
 /**
- * Richer alias of getSession — loads layout and active status alongside
- * the session.yaml data. Returns null if not found.
+ * Load a full BufoSession object by project + name. Returns null if not found.
  */
 export async function loadSessionFull(
   project: BufoProject,
   name: string,
 ): Promise<BufoSession | null> {
-  return getSession(project, name);
+  const sessionDir = getSessionDir(project, name);
+  const sessionFile = join(sessionDir, 'session.yaml');
+  let raw: string;
+  try {
+    raw = await readFile(sessionFile, 'utf-8');
+  } catch {
+    return null;
+  }
+  const doc = (yaml.load(raw) as Record<string, string>) ?? {};
+
+  const hasReviewOutput = existsSync(join(sessionDir, 'review-output.md'));
+  const layout = await loadSessionLayout(sessionDir);
+
+  return {
+    name: doc['name'] ?? name,
+    project: doc['project'] ?? project.alias,
+    created: doc['created'] ?? '',
+    last_accessed: doc['last_accessed'] ?? '',
+    summary: doc['summary'] ?? '',
+    type: (doc['type'] as BufoSession['type']) ?? 'general',
+    active: false, // iTerm2 session liveness is checked externally
+    hasReviewOutput,
+    layout: layout ?? undefined,
+  };
 }
 
 /**
- * List all sessions for a project, optionally filtered by type prefix or name prefix.
- * Mirrors bash session_list filtering: matches on name prefix OR type equals filter.
+ * List all sessions for a project, optionally filtered by name prefix or type.
  */
 export async function listSessions(
   project: BufoProject,
   filter?: string,
 ): Promise<BufoSession[]> {
-  const all = discoverSessions(project.alias);
-  if (!filter) return all;
-  return all.filter(
-    (s) => s.name.startsWith(filter) || s.type === filter,
-  );
+  const sessionsDir = getSessionsDir(project);
+  let entries: string[];
+  try {
+    entries = await readdir(sessionsDir);
+  } catch {
+    return [];
+  }
+
+  const sessions: BufoSession[] = [];
+  for (const entry of entries) {
+    const sessionDir = join(sessionsDir, entry);
+    try {
+      const info = await stat(sessionDir);
+      if (!info.isDirectory()) continue;
+    } catch {
+      continue;
+    }
+    const session = await loadSessionFull(project, entry);
+    if (!session) continue;
+    if (filter && !entry.startsWith(filter) && session.type !== filter) continue;
+    sessions.push(session);
+  }
+  return sessions;
 }
 
 /**
@@ -164,7 +210,8 @@ export async function saveSessionLayout(
 }
 
 /**
- * Read layout.json from a session directory. Returns null if missing/invalid.
+ * Read layout.json from a session directory. Returns null if missing or invalid
+ * (requires at minimum a main_sid field to be considered valid).
  */
 export async function loadSessionLayout(
   sessionDir: string,
@@ -172,7 +219,10 @@ export async function loadSessionLayout(
   const layoutFile = join(sessionDir, 'layout.json');
   try {
     const raw = await readFile(layoutFile, 'utf-8');
-    return JSON.parse(raw) as SessionLayout;
+    const parsed = JSON.parse(raw) as Partial<SessionLayout>;
+    // Require the essential fields
+    if (!parsed.main_sid) return null;
+    return parsed as SessionLayout;
   } catch {
     return null;
   }

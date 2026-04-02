@@ -3,9 +3,7 @@ export * from './config.js';
 export * from './bufo.js';
 export * from './exec.js';
 export * from './session.js';
-export * from './meta.js';
-
-// iTerm2 AppleScript abstraction (async + sync)
+export * from './meta.js';// iTerm2 AppleScript abstraction (async + sync)
 export {
   focusSession,
   focusSessionAsync,
