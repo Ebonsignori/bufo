@@ -1,0 +1,124 @@
+export interface BufoProject {
+  alias: string;
+  session_name: string;
+  tadpole_base: string;
+  main_repo: string;
+  config_file?: string;
+  tadpoles: {
+    count: number;
+    prefix: string;
+    branch_pattern: string;
+  };
+  ports?: {
+    api_base?: number;
+    app_base?: number;
+  };
+  layout?: {
+    panes?: Array<{ name: string; command: string }>;
+  };
+  env_sync?: {
+    port_spacing?: number;
+    files?: Array<{
+      path: string;
+      copy_from?: string;
+      ports?: string[];
+      refs?: Record<string, string>;
+      overrides?: Record<string, string>;
+    }>;
+  };
+  cleanup?: {
+    kill_pattern?: string;
+    preserve_files?: string;
+  };
+  ai_tool?: string;
+  install_command?: string;
+  install_env?: string;
+  team_mode?: {
+    enabled?: boolean;
+  };
+  submodules?: Array<{
+    path: string;
+    install_command?: string;
+  }>;
+  shared_volume?: {
+    enabled?: boolean;
+    path?: string;
+    link?: string;
+  };
+}
+
+export interface TadpoleMeta {
+  type?: 'tadpole' | 'ticket' | 'pr' | 'main';
+  name?: string;
+  ticket?: string;
+  ticket_url?: string;
+  pr_number?: string;
+  pr_title?: string;
+  pr_url?: string;
+  links?: Array<{ label: string; url: string }>;
+}
+
+export interface TadpoleState {
+  workspace: number | string;
+  window_id: string;
+  tab_id: string;
+  panes: {
+    terminal: string;
+    server: string;
+    main: string;
+    info?: string;
+  };
+  created_at: string;
+}
+
+export interface BufoTadpole {
+  project: BufoProject;
+  number: number;
+  directory: string;
+  branch: string;
+  locked: boolean;
+  active: boolean;
+  meta?: TadpoleMeta;
+  state?: TadpoleState;
+  customName?: string;
+}
+
+export interface GlobalConfig {
+  default_project?: string;
+  aliases?: Record<string, string>;
+  log_retention_days?: number;
+}
+
+export interface SessionLayout {
+  window_id: string;
+  terminal_sid: string;
+  server_sid: string;
+  main_sid: string;
+  info_sid: string;
+}
+
+export interface BufoSession {
+  name: string;
+  project: string;
+  created: string;
+  last_accessed: string;
+  summary: string;
+  type: 'general' | 'review' | 'court';
+  prs?: string[];
+  active: boolean;
+  hasReviewOutput: boolean;
+  layout?: SessionLayout;
+}
+
+export interface LayoutResult {
+  windowId: string;
+  terminalSid: string;
+  serverSid: string;
+  mainSid: string;
+  infoSid: string;
+}
+
+export interface CreateOptions {
+  prompt?: string;
+  reuse?: boolean;
+}
