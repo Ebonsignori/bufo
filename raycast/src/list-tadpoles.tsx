@@ -12,11 +12,8 @@ import {
   closeMainWindow,
 } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
-import { getAllTadpoles, getTadpoleTitle, getTadpoleSubtitle } from "./lib/bufo";
-import { bufoExists } from "./lib/config";
-import { focusSession } from "./lib/iterm";
-import { runBufoAsync } from "./lib/exec";
-import type { BufoTadpole } from "./lib/types";
+import { getAllTadpoles, getTadpoleTitle, getTadpoleSubtitle, bufoExists, focusSession, runBufoAsync } from "@bufo/core";
+import type { BufoTadpole } from "@bufo/core";
 import { existsSync, unlinkSync, writeFileSync } from "fs";
 import { join } from "path";
 

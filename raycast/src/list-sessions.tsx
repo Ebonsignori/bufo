@@ -12,11 +12,8 @@ import {
   closeMainWindow,
 } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
-import { bufoExists, getAllSessions } from "./lib/config";
-import { focusSession } from "./lib/iterm";
-import { runBufoAsync } from "./lib/exec";
-import { getActiveSessions } from "./lib/iterm";
-import type { BufoSession } from "./lib/types";
+import { bufoExists, focusSession, getActiveSessions, getAllSessions, runBufoAsync } from "@bufo/core";
+import type { BufoSession } from "@bufo/core";
 
 export default function ListSessions() {
   if (!bufoExists()) {

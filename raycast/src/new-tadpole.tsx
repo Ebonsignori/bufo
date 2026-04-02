@@ -1,7 +1,6 @@
 import { Form, ActionPanel, Action, showToast, Toast, popToRoot } from "@raycast/api";
 import { useState } from "react";
-import { discoverProjects } from "./lib/config";
-import { runBufoAsync } from "./lib/exec";
+import { discoverProjects, runBufoAsync } from "@bufo/core";
 
 export default function NewTadpole() {
   const projects = discoverProjects();
