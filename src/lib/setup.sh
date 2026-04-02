@@ -119,6 +119,22 @@ _setup_paste_image_script() {
   echo -e "  ${GREEN}✓${NC} iTerm2 Python API enabled"
 }
 
+_setup_split_pane_cwd() {
+  local plist="$HOME/Library/Preferences/com.googlecode.iterm2.plist"
+
+  local i=0
+  local count=0
+  while /usr/libexec/PlistBuddy -c "Print ':New Bookmarks:$i:Guid'" "$plist" &>/dev/null; do
+    /usr/libexec/PlistBuddy -c "Delete ':New Bookmarks:$i:New Split Pane Inherits CWD'" "$plist" 2>/dev/null || true
+    /usr/libexec/PlistBuddy -c "Add ':New Bookmarks:$i:New Split Pane Inherits CWD' bool true" "$plist"
+
+    count=$((count + 1))
+    i=$((i + 1))
+  done
+
+  echo -e "  ${GREEN}✓${NC} Split panes inherit CWD enabled on $count profile(s)"
+}
+
 _setup_web_plist() {
   local repo_dir
   if [ -n "${BUFO_REPO_DIR:-}" ]; then
@@ -200,6 +216,9 @@ setup_terminal() {
   echo -e "  ${GREEN}~/.bufo/logs/\(id).log${NC}"
   echo -e "  ${GRAY}Enables full-color ANSI output in the Bufo mobile UI${NC}"
   echo ""
+  echo -e "  ${BOLD}Split pane CWD${NC}"
+  echo -e "  ${GRAY}New split panes open in the current working directory${NC}"
+  echo ""
   echo -e "  ${BOLD}Web agent${NC}"
   echo -e "  ${GRAY}Installs and starts the LaunchAgent daemon${NC}"
   echo ""
@@ -238,6 +257,10 @@ setup_terminal() {
   echo ""
   echo -e "${BOLD}Session logging (mobile ANSI colors):${NC}"
   _setup_session_logging
+
+  echo ""
+  echo -e "${BOLD}Split pane CWD:${NC}"
+  _setup_split_pane_cwd
 
   echo ""
 
