@@ -159,8 +159,10 @@ async function resolveTicketUrl(
   if (originalInput.startsWith('https://')) return originalInput;
 
   try {
+    const configFile = project.config_file;
+    if (!configFile) throw new Error('no config_file');
     const { stdout } = await execa('yq', [
-      '-r', '.ticket.linear_base_url // ""', project.config_file,
+      '-r', '.ticket.linear_base_url // ""', configFile,
     ]);
     const baseUrl = stdout.trim();
     if (baseUrl) return `${baseUrl.replace(/\/$/, '')}/${ticketId}`;

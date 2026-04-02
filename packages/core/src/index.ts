@@ -7,26 +7,14 @@ export * from './meta.js';
 
 // iTerm2 AppleScript abstraction (async + sync)
 export {
-  createWindow,
-  createTab,
-  splitVertical,
-  splitHorizontal,
-  splitHorizontalThin,
+  focusSession,
+  focusSessionAsync,
+  sessionExists,
   sendText,
   sendInterrupt,
-  captureSession,
-  getSessionSize,
-  focusSession,
-  focusTab,
-  closeSession,
   closeTabBySession,
-  renameTabBySession,
-  resizeSession,
-  sessionExists,
   getActiveSessions,
   isItermRunning,
-  isItermInstalled,
-  listSessions,
 } from './iterm.js';
 
 // State persistence

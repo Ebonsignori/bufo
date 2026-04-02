@@ -15,6 +15,8 @@ export interface BufoProject {
   layout?: {
     panes?: Array<{ name: string; command: string }> | undefined;
   } | undefined;
+  /** Absolute path to the YAML config file that defined this project. */
+  config_file?: string | undefined;
 }
 
 export interface TadpoleMeta {

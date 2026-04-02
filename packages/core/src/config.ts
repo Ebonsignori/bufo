@@ -63,6 +63,7 @@ export function loadProject(alias: string, filePath: string): BufoProject {
         }
       : undefined,
     layout: doc.layout as BufoProject["layout"],
+    config_file: filePath,
   };
 }
 
